@@ -35,6 +35,10 @@ const JobApplicationSchema = new Schema(
         type: String,
         default: "",
     },
+    endedAt: {
+      type: Date,
+      default: null,
+    },
     folderPath: {
       type: String,
       default: null,
