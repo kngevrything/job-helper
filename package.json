@@ -1,0 +1,25 @@
+{
+  "name": "job_helper",
+  "version": "1.0.0",
+  "description": "website for tracking job applications",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kngevrything/job_helper.git"
+  },
+  "keywords": [
+    "application",
+    "job",
+    "helper",
+    "node"
+  ],
+  "author": "Kevin Liedtke",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/kngevrything/job_helper/issues"
+  },
+  "homepage": "https://github.com/kngevrything/job_helper#readme"
+}
