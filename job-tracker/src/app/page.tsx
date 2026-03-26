@@ -10,6 +10,7 @@ type Application = {
   jobTitle: string;
   jobUrl: string;
   status: string;
+  notes: string;
   createdAt: string;
   excelRowText?: string;
   starterPromptText?: string;
@@ -29,6 +30,13 @@ type CreateResult = {
 export default function Home() {
   const [applications, setApplications] = useState<Application[]>([]);
   const [selected, setSelected] = useState<Application | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("All");
+  const [sortOrder, setSortOrder] = useState<string>("newest");
+  const [isEditing, setIsEditing] = useState(false);
+  const [editJobTitle, setEditJobTitle] = useState("");
+  const [editJobUrl, setEditJobUrl] = useState("");
+  const [editNotes, setEditNotes] = useState("");
 
   const [company, setCompany] = useState("");
   const [jobId, setJobId] = useState("");
@@ -113,6 +121,91 @@ export default function Home() {
       setUpdating(false);
     }
   }
+
+  function startEditing() {
+    if (!selected) return;
+
+    setEditJobTitle(selected.jobTitle);
+    setEditJobUrl(selected.jobUrl);
+    setEditNotes(selected.notes ?? "");
+    setIsEditing(true);
+  }
+
+  function cancelEditing() {
+    setIsEditing(false);
+    setEditJobTitle("");
+    setEditJobUrl("");
+    setEditNotes("");
+  }
+  async function saveEdits() {
+    if (!selected) return;
+
+    setUpdating(true);
+    setError(null);
+
+    try {
+      const res = await fetch(`/api/job-applications/${selected._id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          jobTitle: editJobTitle,
+          jobUrl: editJobUrl,
+          notes: editNotes,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.ok) {
+        throw new Error(data.error || "Failed to update application.");
+      }
+
+      setApplications((current) =>
+        current.map((app) => (app._id === selected._id ? data.data : app))
+      );
+
+      setSelected(data.data);
+      setIsEditing(false);
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Failed to update application.";
+      setError(message);
+    } finally {
+      setUpdating(false);
+    }
+  }
+  const filteredApplications = applications.filter((app) => {
+    const search = searchTerm.trim().toLowerCase();
+
+    const matchesSearch =
+      `${app.company} ${app.jobTitle} ${app.jobId} ${app.jobUrl}`
+        .toLowerCase()
+        .includes(search);
+
+    const matchesStatus =
+      statusFilter === "All" || app.status === statusFilter;
+
+    return matchesSearch && matchesStatus;
+  });
+
+  const visibleApplications = [...filteredApplications].sort((a, b) => {
+    switch (sortOrder) {
+      case "oldest":
+        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+
+      case "company-asc":
+        return a.company.localeCompare(b.company);
+
+      case "company-desc":
+        return b.company.localeCompare(a.company);
+
+      case "newest":
+      default:
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    }
+  });
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -273,28 +366,73 @@ export default function Home() {
         )}
       </section>
 
+    
+
       <section style={{ display: "flex", gap: 24, alignItems: "flex-start" }}>
         <div style={{ width: 350 }}>
           <h2>Applications</h2>
-
+          <input
+            placeholder="Search company, title, or job ID"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            style={{ width: "100%", marginBottom: 12 }}
+          />
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            style={{ width: "100%", marginBottom: 12 }}
+          >
+            <option value="All">All Statuses</option>
+            {JOB_APPLICATION_STATUSES.map((status) => (
+              <option key={status} value={status}>
+                {status}
+              </option>
+            ))}
+          </select>
+          <select
+            value={sortOrder}
+            onChange={(e) => setSortOrder(e.target.value)}
+            style={{ width: "100%", marginBottom: 12 }}
+          >
+            <option value="newest">Newest First</option>
+            <option value="oldest">Oldest First</option>
+            <option value="company-asc">Company A-Z</option>
+            <option value="company-desc">Company Z-A</option>
+          </select>
           {loading && <p>Loading...</p>}
-
+  
+          {!loading && visibleApplications.length === 0 && (
+            <p>No matching applications.</p>
+          )}
           {!loading &&
-            applications.map((app) => (
+            visibleApplications.map((app) => (
               <div
                 key={app._id}
-                onClick={() => setSelected(app)}
+                onClick={() => {
+                  setSelected(app);
+                  setIsEditing(false);
+                }}
                 style={{
                   padding: 10,
                   marginBottom: 8,
                   border: "1px solid #ccc",
                   cursor: "pointer",
                   background: selected?._id === app._id ? "#eee" : "transparent",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "flex-start",
+                  gap: 12,
                 }}
               >
-                <strong>{app.company}</strong>
-                <div>{app.jobTitle}</div>
-                <div style={{ fontSize: 12 }}>{app.status}</div>
+                <div>
+                  <strong>{app.company}</strong>
+                  <div>{app.jobTitle}</div>
+                  <div style={{ fontSize: 12 }}>{app.status}</div>
+                </div>
+
+                <div style={{ fontSize: 12, whiteSpace: "nowrap" }}>
+                  {daysSince(app.createdAt)}d
+                </div>
               </div>
             ))}
         </div>
@@ -307,23 +445,40 @@ export default function Home() {
           {selected && (
             <div style={{ display: "grid", gap: 12 }}>
               <div>
-                <strong>Company:</strong> {selected.company}
-              </div>
+              <strong>Company:</strong> {selected.company}
+                </div>
 
-              <div>
-                <strong>Job Title:</strong> {selected.jobTitle}
-              </div>
+                <div>
+                  <strong>Job ID:</strong> {selected.jobId}
+                </div>
 
-              <div>
-                <strong>Job ID:</strong> {selected.jobId}
-              </div>
+                <div>
+                  <strong>Job Title:</strong>{" "}
+                  {isEditing ? (
+                    <input
+                      value={editJobTitle}
+                      onChange={(e) => setEditJobTitle(e.target.value)}
+                      style={{ width: "100%", marginTop: 4 }}
+                    />
+                  ) : (
+                    selected.jobTitle
+                  )}
+                </div>
 
-              <div>
-                <strong>Link:</strong>{" "}
-                <a href={selected.jobUrl} target="_blank" rel="noreferrer">
-                  {selected.jobUrl}
-                </a>
-              </div>
+                <div>
+                  <strong>Link:</strong>{" "}
+                  {isEditing ? (
+                    <input
+                      value={editJobUrl}
+                      onChange={(e) => setEditJobUrl(e.target.value)}
+                      style={{ width: "100%", marginTop: 4 }}
+                    />
+                  ) : (
+                    <a href={selected.jobUrl} target="_blank" rel="noreferrer">
+                      {selected.jobUrl}
+                    </a>
+                  )}
+                </div>
 
               <div>
                 <strong>Status:</strong>{" "}
@@ -338,13 +493,65 @@ export default function Home() {
                     </option>
                   ))}
                 </select>
+                <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
               </div>
 
               <div>
                 <strong>Days Since Applied:</strong> {daysSince(selected.createdAt)}
               </div>
+              <div>
+              <strong>Notes:</strong>
+              {isEditing ? (
+                <textarea
+                  value={editNotes}
+                  onChange={(e) => setEditNotes(e.target.value)}
+                  rows={6}
+                  style={{ width: "100%", marginTop: 4, border: "1px solid #ccc" }}
+                />
+              ) : (
+                <div
+                  style={{
+                    marginTop: 4,
+                    padding: 8,
+                    border: "1px solid #ccc",
+                    minHeight: 100,
+                    whiteSpace: "pre-wrap",
+                  }}
+                >
+                  {selected.notes?.trim() ? selected.notes : "No notes yet."}
+                </div>
+              )}
             </div>
-          )}
+              
+            {!isEditing ? (
+              <button type="button" onClick={startEditing}>
+                Edit
+              </button>
+            ) : (
+              <>
+                <button type="button" onClick={saveEdits} disabled={updating}>
+                  {updating ? "Saving..." : "Save"}
+                </button>
+                <button type="button" onClick={cancelEditing} disabled={updating}>
+                  Cancel
+                </button>
+              </>
+            )}
+            <button
+              type="button"
+              onClick={async () => {
+                if (!selected) return;
+
+                await fetch(`/api/job-applications/${selected._id}/open-folder`, {
+                  method: "POST",
+                });
+              }}
+            >
+              Open Folder
+            </button>
+          </div>
+          </div>
+        )}
         </div>
       </section>
     </main>

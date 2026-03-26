@@ -31,6 +31,10 @@ const JobApplicationSchema = new Schema(
         required: true,
         default: "Tailoring",
     },
+    notes: {
+        type: String,
+        default: "",
+    },
     folderPath: {
       type: String,
       default: null,
