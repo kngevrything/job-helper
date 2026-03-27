@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { JOB_APPLICATION_STATUSES } from "@/lib/jobApplicationStatuses";
+import { APPLICATION_STATUSES } from "@/lib/status";
 
 export const jobApplicationInputSchema = z.object({
   company: z.string().trim().min(1, "Company is required."),
@@ -9,7 +9,7 @@ export const jobApplicationInputSchema = z.object({
   createFiles: z.boolean(),
 });
 
-export const jobApplicationStatusSchema = z.enum(JOB_APPLICATION_STATUSES);
+export const jobApplicationStatusSchema = z.enum(APPLICATION_STATUSES);
 
 export type JobApplicationInput = z.infer<typeof jobApplicationInputSchema>;
 export type JobApplicationStatusInput = z.infer<

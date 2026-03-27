@@ -2,19 +2,7 @@ import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/db/mongoose";
 import { JobApplication } from "@/models/JobApplication";
 import { jobApplicationStatusSchema } from "@/lib/validation/jobApplication";
-
-const TERMINAL_STATUSES = new Set([
-  "Rejected, No Interview",
-  "Closed, No Interview",
-  "1st Round Exit",
-  "2nd Round Exit",
-  "3rd Round Exit",
-  "Final Round Exit",
-  "No Response, Job Closed",
-  "Ghosted",
-  "Disappeared",
-  "Made 2nd, Declined to Proceed",
-]);
+import { isTerminalStatus } from "@/lib/status"
 
 type RouteContext = {
   params: Promise<{
@@ -37,7 +25,7 @@ export async function PATCH(req: Request, context: RouteContext) {
     }
 
     const status = parsed.data;
-    const isTerminal = TERMINAL_STATUSES.has(status);
+    const isTerminal = isTerminalStatus(status);
 
     await connectToDatabase();
 
