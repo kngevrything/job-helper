@@ -531,7 +531,7 @@ export default function MainClient() {
             </div>
 
             <div className="overflow-hidden rounded-xl border border-slate-200">
-              <div className="grid grid-cols-[minmax(0,1.2fr)_minmax(0,1.4fr)_110px_56px] gap-3 border-b border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <div className="grid grid-cols-[minmax(0,0.6fr)_minmax(0,2.0fr)_110px_56px] gap-3 border-b border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
                 <div>Company</div>
                 <div>Title</div>
                 <div>Status</div>
@@ -558,7 +558,7 @@ export default function MainClient() {
                           setSelected(app);
                           setIsEditing(false);
                         }}
-                        className={`grid w-full grid-cols-[minmax(0,1.2fr)_minmax(0,1.4fr)_110px_56px] gap-3 border-b border-slate-100 px-3 py-2 text-left text-sm transition last:border-b-0 ${
+                        className={`grid w-full grid-cols-[minmax(0,0.6fr)_minmax(0,2.0fr)_110px_56px] gap-3 border-b border-slate-100 px-3 py-2 text-left text-sm transition last:border-b-0 ${
                           isSelected
                             ? "bg-slate-900 text-white"
                             : "bg-white text-slate-900 hover:bg-slate-50"
