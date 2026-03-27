@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { APPLICATION_STATUSES } from "@/lib/status";
+import { STATUS_GROUPS } from "@/lib/status";
+
 
 type Application = {
   _id: string;
@@ -664,11 +666,15 @@ export default function MainClient() {
                         disabled={updating}
                         className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
                       >
-                        {APPLICATION_STATUSES.map((status) => (
-                          <option key={status} value={status}>
-                            {status}
-                          </option>
-                        ))}
+                        {STATUS_GROUPS.map((group) => (
+                            <optgroup key={group.label} label={group.label}>
+                                {group.options.map((statusOption) => (
+                                <option key={statusOption} value={statusOption}>
+                                    {statusOption}
+                                </option>
+                                ))}
+                            </optgroup>
+                            ))}
                       </select>
                     </div>
                   </div>
@@ -721,7 +727,7 @@ export default function MainClient() {
                         className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
                       />
                     ) : (
-                      <div className="min-h-[160px] whitespace-pre-wrap rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-700">
+                      <div className="min-h-40 whitespace-pre-wrap rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-700">
                         {selected.notes?.trim() ? selected.notes : "No notes yet."}
                       </div>
                     )}

@@ -1,3 +1,4 @@
+import { APPLICATION_STATUSES } from "@/lib/status";
 import { InferSchemaType, Schema, model, models } from "mongoose";
 
 const JobApplicationSchema = new Schema(
@@ -29,7 +30,8 @@ const JobApplicationSchema = new Schema(
     status: {
         type: String,
         required: true,
-        default: "Tailoring",
+        enum: APPLICATION_STATUSES,
+        default: "Unset",
     },
     notes: {
         type: String,
