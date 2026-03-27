@@ -20,7 +20,7 @@ const TERMINAL_STATUSES = new Set([
   "No Response, Job Closed",
   "Ghosted",
   "Disappeared",
-  "Made 2nd, Declined to Proceed",
+  "2nd Round, Declined to Proceed",
 ]);
 
 function normalize(value) {
@@ -41,7 +41,7 @@ function normalizeStatus(raw) {
     "2nd round exit": "2nd Round Exit",
     "3rd round exit": "3rd Round Exit",
     "final round exit": "Final Round Exit",
-    "made 2nd, declined to proceed": "Made 2nd, Declined to Proceed",
+    "2nd Round, Declined to Proceed": "2nd Round, Declined to Proceed",
     "rejected, no interview": "Rejected, No Interview",
     "closed, no interview": "Closed, No Interview",
     "no response, job closed": "No Response, Job Closed",
