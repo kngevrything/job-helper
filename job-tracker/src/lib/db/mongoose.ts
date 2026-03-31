@@ -21,11 +21,11 @@ global.mongooseConnection = cached;
 
 export async function connectToDatabase() : Promise<typeof mongoose> {
     if (cached.connection) {
-    return cached.connection;
+      return cached.connection;
     }
 
     if (!cached.promise) {
-    cached.promise = mongoose.connect(MONGODB_URI, {dbName: "jobtracker"});
+      cached.promise = mongoose.connect(MONGODB_URI, {dbName: "jobtracker"});
     }
 
     cached.connection = await cached.promise;
