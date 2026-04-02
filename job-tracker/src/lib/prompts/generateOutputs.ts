@@ -23,7 +23,7 @@ export function generateOutputs(
     const jobTitle = clean(input.jobTitle);
     const jobUrl = clean(input.jobUrl);
 
-    const excelRowText = [today, company, jobId, jobTitle, jobUrl].join("\t");
+    const excelRowText = [today, company, jobId, jobUrl,jobTitle].join("\t");
 
     const starterPromptText =
         `Start a new job tailoring session for ${company} – ${jobTitle}. ` +
