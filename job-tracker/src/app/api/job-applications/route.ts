@@ -110,7 +110,7 @@ export async function POST(req: Request) {
     console.error("POST /api/job-applications failed:", error);
 
     return NextResponse.json(
-      { ok: false, error: "Internal server error" },
+      { ok: false, error: "Internal server error - " + (error instanceof Error ? error.message : "Unknown error" )},
       { status: 500 }
     );
   }

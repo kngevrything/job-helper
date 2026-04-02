@@ -31,7 +31,7 @@ const JobApplicationSchema = new Schema(
         type: String,
         required: true,
         enum: APPLICATION_STATUSES,
-        default: "Unset",
+        default: "UNSET",
     },
     notes: {
         type: String,
