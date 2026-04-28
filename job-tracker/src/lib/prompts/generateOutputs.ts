@@ -27,6 +27,7 @@ export function generateOutputs(
 
     const starterPromptText =
         `Start a new job tailoring session for ${company} – ${jobTitle}. ` +
+        `Rename the chat to reflect the new job company and title. ` +
         `Use tailoring_context.md to determine which files are authoritative. ` +
         `My next message will contain the job description.`;
 
