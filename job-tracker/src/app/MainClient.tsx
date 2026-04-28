@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { APPLICATION_STATUSES } from "@/lib/status";
 import { STATUS_GROUPS } from "@/lib/status";
+import { ClearableInput, TypeaheadInput } from "@/lib/InputFieldComponents";
 
 
 type Application = {
@@ -326,6 +327,14 @@ export default function MainClient() {
     ).length,
   };
 
+  const companySuggestions = Array.from(
+      new Set(applications.map((app) => app.company).filter(Boolean))
+    ).sort();
+
+    const jobTitleSuggestions = Array.from(
+        new Set(applications.map((app) => app.jobTitle).filter(Boolean))
+      ).sort();
+
   return (
     <main className="min-h-screen bg-slate-100">
       <div className="mx-auto flex max-w-9xl flex-col gap-6 px-6 py-8">
@@ -342,44 +351,47 @@ export default function MainClient() {
           <form onSubmit={handleCreate} className="grid gap-4 md:grid-cols-2">
             <div className="flex flex-col gap-1">
               <label className="text-sm font-medium text-slate-700">Company</label>
-              <input
-                className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
-                placeholder="Company"
-                value={company}
-                onChange={(e) => setCompany(e.target.value)}
-                required
-              />
+               <TypeaheadInput
+                  name="company"
+                  value={company}
+                  onChange={setCompany}
+                  suggestions={companySuggestions}
+                  placeholder="Company"
+                  required
+                />
             </div>
 
             <div className="flex flex-col gap-1">
               <label className="text-sm font-medium text-slate-700">Job ID</label>
-              <input
-                className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
-                placeholder="Job ID"
-                value={jobId}
-                onChange={(e) => setJobId(e.target.value)}
-                required
-              />
+               <ClearableInput
+                  name="jobId"
+                  value={jobId}
+                  onChange={setJobId}
+                  placeholder="Job ID"
+                  required
+                />
             </div>
 
             <div className="flex flex-col gap-1">
               <label className="text-sm font-medium text-slate-700">Job Title</label>
-              <input
-                className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
-                placeholder="Job Title"
-                value={jobTitle}
-                onChange={(e) => setJobTitle(e.target.value)}
-                required
-              />
+              <TypeaheadInput
+                  name="jobTitle"
+                  value={jobTitle}
+                  onChange={setJobTitle}
+                  suggestions={jobTitleSuggestions}
+                  placeholder="Job Title"
+                  required
+                />
+      
             </div>
 
             <div className="flex flex-col gap-1">
               <label className="text-sm font-medium text-slate-700">Job URL</label>
-              <input
-                className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
-                placeholder="Job URL"
+               <ClearableInput
+                name="jobUrl"
                 value={jobUrl}
-                onChange={(e) => setJobUrl(e.target.value)}
+                onChange={setJobUrl}
+                placeholder="Job URL"
                 required
               />
             </div>
@@ -498,11 +510,12 @@ export default function MainClient() {
             </div>
 
             <div className="mb-4 grid gap-3">
-              <input
-                placeholder="Search company, title, job ID, or URL"
+              <ClearableInput
+                name="searchTerm"
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+                onChange={setSearchTerm}
+                placeholder="Search company, title, job ID, or URL"
+                required
               />
 
               <select
