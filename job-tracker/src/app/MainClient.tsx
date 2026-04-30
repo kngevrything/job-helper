@@ -400,7 +400,7 @@ export default function MainClient() {
               <button
                 type="submit"
                 disabled={creating}
-                className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 hover:cursor-pointer"
               >
                 {creating ? "Creating..." : "Create Application"}
               </button>
@@ -432,7 +432,7 @@ export default function MainClient() {
                   <button
                     type="button"
                     onClick={() => copy(createResult.excelRowText)}
-                    className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
+                    className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 hover:cursor-pointer"
                   >
                     Copy
                   </button>
@@ -451,7 +451,7 @@ export default function MainClient() {
                   <button
                     type="button"
                     onClick={() => copy(createResult.starterPromptText)}
-                    className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
+                    className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 hover:cursor-pointer"
                   >
                     Copy
                   </button>
@@ -572,7 +572,7 @@ export default function MainClient() {
                           setSelected(app);
                           setIsEditing(false);
                         }}
-                        className={`grid w-full grid-cols-[minmax(0,0.6fr)_minmax(0,0.3fr)_minmax(0,2.0fr)_210px_56px] gap-3 border-b border-slate-100 px-3 py-2 text-left text-sm transition last:border-b-0 ${
+                        className={`hover:cursor-pointer grid w-full grid-cols-[minmax(0,0.6fr)_minmax(0,0.3fr)_minmax(0,2.0fr)_210px_56px] gap-3 border-b border-slate-100 px-3 py-2 text-left text-sm transition last:border-b-0 ${
                           isSelected
                             ? "bg-slate-900 text-white"
                             : "bg-white text-slate-900 hover:bg-slate-50"
@@ -754,7 +754,7 @@ export default function MainClient() {
                     <button
                       type="button"
                       onClick={startEditing}
-                      className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800"
+                      className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800 hover:cursor-pointer"
                     >
                       Edit
                     </button>
@@ -764,7 +764,7 @@ export default function MainClient() {
                         type="button"
                         onClick={saveEdits}
                         disabled={updating}
-                        className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                        className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 hover:cursor-pointer"
                       >
                         {updating ? "Saving..." : "Save"}
                       </button>
@@ -772,7 +772,7 @@ export default function MainClient() {
                         type="button"
                         onClick={cancelEditing}
                         disabled={updating}
-                        className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                        className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 hover:cursor-pointer"
                       >
                         Cancel
                       </button>
@@ -788,7 +788,7 @@ export default function MainClient() {
                         method: "POST",
                       });
                     }}
-                    className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                    className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 hover:cursor-pointer"
                   >
                     Open Folder
                   </button>

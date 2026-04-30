@@ -32,7 +32,7 @@ export function ClearableInput({
         <button
           type="button"
           onClick={() => onChange("")}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 hover:cursor-pointer"
           aria-label={`Clear ${name ?? "input"}`}
         >
           ×
@@ -91,7 +91,7 @@ export function TypeaheadInput({
         <button
           type="button"
           onClick={() => onChange("")}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 hover:cursor-pointer"
           aria-label={`Clear ${name}`}
         >
           ×
