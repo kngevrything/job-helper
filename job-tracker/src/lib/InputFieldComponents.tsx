@@ -24,6 +24,7 @@ export function ClearableInput({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
+        autoComplete="off"
         required={required}
         className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 pr-9 text-sm outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
       />
@@ -43,7 +44,7 @@ export function ClearableInput({
 }
 
 type TypeaheadInputProps = {
-  name: string;
+  name?: string;
   value: string;
   onChange: (value: string) => void;
   suggestions: string[];
@@ -83,6 +84,7 @@ export function TypeaheadInput({
         onFocus={() => setIsFocused(true)}
         onBlur={() => setTimeout(() => setIsFocused(false), 100)}
         placeholder={placeholder}
+        autoComplete="off"
         required={required}
         className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 pr-9 text-sm outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
       />
@@ -92,7 +94,7 @@ export function TypeaheadInput({
           type="button"
           onClick={() => onChange("")}
           className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 hover:cursor-pointer"
-          aria-label={`Clear ${name}`}
+          aria-label={`Clear ${name ?? "input"}`}
         >
           ×
         </button>
