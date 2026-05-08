@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { APPLICATION_STATUSES } from "@/lib/status";
 import { STATUS_GROUPS } from "@/lib/status";
 import { ClearableInput, TypeaheadInput } from "@/lib/InputFieldComponents";
@@ -328,13 +328,26 @@ export default function MainClient() {
     ).length,
   };
 
-  const companySuggestions = Array.from(
-      new Set(applications.map((app) => app.company).filter(Boolean))
-    ).sort();
+  const companySuggestions = useMemo(() => {
+    return Array.from(
+      new Set(applications.map((app) => app.company?.trim()).filter(Boolean))
+    ).sort((a, b) => a.localeCompare(b));
+  }, [applications]);
 
-    const jobTitleSuggestions = Array.from(
-        new Set(applications.map((app) => app.jobTitle).filter(Boolean))
-      ).sort();
+  const jobTitleSuggestions = useMemo(() => {
+    return Array.from(
+      new Set(applications.map((app) => app.jobTitle?.trim()).filter(Boolean))
+    ).sort((a, b) => a.localeCompare(b));
+  }, [applications]);
+
+  const searchSuggestions = useMemo(() => {
+    return [
+      ...companySuggestions,
+      ...jobTitleSuggestions.filter(
+        (jobTitle) => !companySuggestions.includes(jobTitle)
+      ),
+    ];
+  }, [companySuggestions, jobTitleSuggestions]);
 
   return (
     <main className="min-h-screen bg-slate-100">
@@ -510,12 +523,19 @@ export default function MainClient() {
             </div>
 
             <div className="mb-4 grid gap-3">
-              <ClearableInput
+              {/* <ClearableInput
                 name="searchTerm"
                 value={searchTerm}
                 onChange={setSearchTerm}
                 placeholder="Search company, title, job ID, or URL"
                 required
+              /> */}
+              <TypeaheadInput
+                name="search"
+                value={searchTerm}
+                onChange={setSearchTerm}
+                suggestions={searchSuggestions}
+                placeholder="Search company, title, job ID, or URL"
               />
 
               <select
