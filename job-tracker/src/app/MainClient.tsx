@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { APPLICATION_STATUSES } from "@/lib/status";
 import { STATUS_GROUPS } from "@/lib/status";
 import { ClearableInput, TypeaheadInput } from "@/lib/InputFieldComponents";
+import { CopyButton } from "./CopyButton";
 
 
 type Application = {
@@ -429,13 +430,13 @@ export default function MainClient() {
               <div className="grid gap-2">
                 <div className="flex items-center justify-between gap-3">
                   <h3 className="text-sm font-semibold text-slate-900">Excel Row</h3>
-                  <button
-                    type="button"
-                    onClick={() => copy(createResult.excelRowText)}
+                  <CopyButton
+                    value={createResult.excelRowText}
+                    label="Copy"
+                    copiedLabel="Row Copied..."
                     className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 hover:cursor-pointer"
-                  >
-                    Copy
-                  </button>
+                  />
+
                 </div>
                 <textarea
                   value={createResult.excelRowText}
@@ -448,13 +449,12 @@ export default function MainClient() {
               <div className="grid gap-2">
                 <div className="flex items-center justify-between gap-3">
                   <h3 className="text-sm font-semibold text-slate-900">Starter Prompt</h3>
-                  <button
-                    type="button"
-                    onClick={() => copy(createResult.starterPromptText)}
+                  <CopyButton
+                    value={createResult.starterPromptText}
+                    label="Copy"
+                    copiedLabel="Chat Copied..."
                     className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 hover:cursor-pointer"
-                  >
-                    Copy
-                  </button>
+                  />
                 </div>
                 <textarea
                   value={createResult.starterPromptText}
