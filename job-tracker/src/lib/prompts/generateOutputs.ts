@@ -26,10 +26,15 @@ export function generateOutputs(
     const excelRowText = [today, company, jobId, jobUrl,jobTitle].join("\t");
 
     const starterPromptText =
-        `Start a new job tailoring session for ${company} – ${jobTitle}. ` +
-        `Rename the chat to reflect the new job company and title. ` +
-        `Use tailoring_context.md to determine which files are authoritative. ` +
-        `My next message will contain the job description.`;
+      `Forget previous tailorings, start fresh with this job:\n\n` +
+      `Company: ${company}\n` +
+      `Role: ${jobTitle}\n\n` +
+      `Use tailoring_context.md to determine which files are authoritative. ` +
+      `Use resume_master.md as the only source for current resume wording. ` +
+      `Before tailoring, evaluate the role fit using Core Requirements, Soft Skills & Leadership, and Responsibilities / Day-to-Day Fit. ` +
+      `Flag real gaps, partial matches, and truthful bridges based only on my actual background. ` +
+      `Only use portfolio reference files if the role asks for a portfolio, product design, UX design, design engineering, case studies, visual/UI craft, or similar evidence. ` +
+      `My next message will contain the job description.`;
 
     return {
         excelRowText,
