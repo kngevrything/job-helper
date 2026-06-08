@@ -26,15 +26,13 @@ export function generateOutputs(
     const excelRowText = [today, company, jobId, jobUrl,jobTitle].join("\t");
 
     const starterPromptText =
-      `Forget previous tailorings, start fresh with this job:\n\n` +
+      `New tailoring session, start fresh.\n\n` +
       `Company: ${company}\n` +
       `Role: ${jobTitle}\n\n` +
-      `Use tailoring_context.md to determine which files are authoritative. ` +
-      `Use resume_master.md as the only source for current resume wording. ` +
-      `Before tailoring, evaluate the role fit using Core Requirements, Soft Skills & Leadership, and Responsibilities / Day-to-Day Fit. ` +
-      `Flag real gaps, partial matches, and truthful bridges based only on my actual background. ` +
-      `Only use portfolio reference files if the role asks for a portfolio, product design, UX design, design engineering, case studies, visual/UI craft, or similar evidence. ` +
-      `My next message will contain the job description.`;
+      `Fit evaluation already completed. Decision: Apply. Skip re-evaluation and go straight to tailoring.\n` +
+      `Go one section at a time so we can discuss changes for each one, then anything that needs adjustment for future recommendations` + 
+      `can factor in that discussion.\n\n` +
+      `My next message will contain the job description.` ;
 
     return {
         excelRowText,
