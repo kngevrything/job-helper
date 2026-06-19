@@ -285,27 +285,14 @@ export default function MainClient() {
   }, [filteredApplications, sortOrder]);
 
   
-  const summaryCounts = {
+  const summaryCounts = useMemo(() => ({
     total: applications.length,
     applied: applications.filter((app) => app.status === "Applied").length,
     interviewing: applications.filter((app) =>
-      ["1st Interview Done", "Final Round Scheduled"].includes(app.status)
+      app.status.includes("Round") && !isTerminalStatus(app.status)
     ).length,
-    exited: applications.filter((app) =>
-      [
-        "1st Round Exit",
-        "2nd Round Exit",
-        "3rd Round Exit",
-        "Final Round Exit",
-        "Rejected, No Interview",
-        "Closed, No Interview",
-        "No Response, Job Closed",
-        "Ghosted",
-        "Disappeared",
-        "2nd Round, Declined to Proceed",
-      ].includes(app.status)
-    ).length,
-  };
+    exited: applications.filter((app) => isTerminalStatus(app.status)).length,
+  }), [applications]);
 
   const companySuggestions = useMemo(() => {
     return Array.from(
