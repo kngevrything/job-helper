@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { APPLICATION_STATUSES } from "@/lib/status";
-import { STATUS_GROUPS } from "@/lib/status";
+import { APPLICATION_STATUSES, STATUS_GROUPS, isTerminalStatus } from "@/lib/status";
 import { ClearableInput, TypeaheadInput } from "@/lib/InputFieldComponents";
 import { CopyButton } from "./CopyButton";
 
@@ -88,21 +87,6 @@ export default function MainClient() {
   useEffect(() => {
     loadApplications();
   }, []);
-
-  function isTerminalStatus(status: string) {
-    return [
-      "Rejected, No Interview",
-      "Closed, No Interview",
-      "1st Round Exit",
-      "2nd Round Exit",
-      "3rd Round Exit",
-      "Final Round Exit",
-      "No Response, Job Closed",
-      "Ghosted",
-      "Disappeared",
-      "2nd Round, Declined to Proceed",
-    ].includes(status);
-  }
 
   function getDurationDays(app: Application): number | null {
     const created = new Date(app.createdAt);
@@ -268,42 +252,37 @@ export default function MainClient() {
     }
   }
 
-  async function copy(text: string) {
-    try {
-      await navigator.clipboard.writeText(text);
-    } catch {
-      setError("Copy failed.");
-    }
-  }
+  const filteredApplications = useMemo(() => {
+    return applications.filter((app) => {
+      const search = searchTerm.trim().toLowerCase();
 
-  const filteredApplications = applications.filter((app) => {
-    const search = searchTerm.trim().toLowerCase();
+      const matchesSearch =
+        `${app.company} ${app.jobTitle} ${app.jobId} ${app.jobUrl}`
+          .toLowerCase()
+          .includes(search);
 
-    const matchesSearch =
-      `${app.company} ${app.jobTitle} ${app.jobId} ${app.jobUrl}`
-        .toLowerCase()
-        .includes(search);
+      const matchesStatus =
+        statusFilter === "All" || app.status === statusFilter;
 
-    const matchesStatus =
-      statusFilter === "All" || app.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [applications, searchTerm, statusFilter]);
 
-    return matchesSearch && matchesStatus;
-  });
-
-  const visibleApplications = [...filteredApplications].sort((a, b) => {
-    switch (sortOrder) {
-      case "oldest":
-        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-      case "company-asc":
-        return a.company.localeCompare(b.company);
-      case "company-desc":
-        return b.company.localeCompare(a.company);
-      case "newest":
-      default:
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-    }
-  
-  });
+  const visibleApplications = useMemo(() => {
+    return [...filteredApplications].sort((a, b) => {
+      switch (sortOrder) {
+        case "oldest":
+          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        case "company-asc":
+          return a.company.localeCompare(b.company);
+        case "company-desc":
+          return b.company.localeCompare(a.company);
+        case "newest":
+        default:
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }
+    });
+  }, [filteredApplications, sortOrder]);
 
   
   const summaryCounts = {
@@ -350,7 +329,7 @@ export default function MainClient() {
   }, [companySuggestions, jobTitleSuggestions]);
 
   return (
-    <main className="min-h-screen bg-slate-100">
+    <div className="min-h-screen bg-slate-100">
       <div className="mx-auto flex max-w-9xl flex-col gap-6 px-6 py-8">
         <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <div className="mb-5">
@@ -523,13 +502,6 @@ export default function MainClient() {
             </div>
 
             <div className="mb-4 grid gap-3">
-              {/* <ClearableInput
-                name="searchTerm"
-                value={searchTerm}
-                onChange={setSearchTerm}
-                placeholder="Search company, title, job ID, or URL"
-                required
-              /> */}
               <TypeaheadInput
                 name="search"
                 value={searchTerm}
@@ -834,6 +806,6 @@ export default function MainClient() {
           </div>
         </section>
       </div>
-    </main>
+    </div>
   );
 }

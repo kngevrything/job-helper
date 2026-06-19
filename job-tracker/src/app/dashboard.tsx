@@ -1,6 +1,6 @@
 // src/app/dashboard.tsx
 import { getDashboardSummary } from "@/lib/dashboard"
-import { TERMINAL_STATUSES, isTerminalStatus } from "@/lib/status"
+import { isTerminalStatus } from "@/lib/status"
 
 function formatAverageDays(value: number | null) {
   if (value === null) return "—"

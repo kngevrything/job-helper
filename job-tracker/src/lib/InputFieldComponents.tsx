@@ -107,7 +107,10 @@ export function TypeaheadInput({
               key={suggestion}
               type="button"
               onMouseDown={(e) => e.preventDefault()}
-              onClick={() => onChange(suggestion)}
+              onClick={() => {
+                onChange(suggestion);
+                setIsFocused(false);
+              }}
               className="block w-full px-3 py-2 text-left text-sm hover:bg-slate-100"
             >
               {suggestion}
