@@ -3,8 +3,7 @@ import { connectToDatabase } from "@/lib/db/mongoose";
 import { JobApplication } from "@/models/JobApplication";
 import { jobApplicationInputSchema } from "@/lib/validation/jobApplication";
 import { generateOutputs } from "@/lib/prompts/generateOutputs";
-import { companyNeedsCustomResume } from "@/lib/files/companyRules";
-import { createApplicationFiles } from "@/lib/files/createApplicationFiles";
+import { createApplicationFolder } from "@/lib/files/createApplicationFolder";
 
 export async function GET() {
   try {
@@ -32,7 +31,6 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
 
-    // validate input
     const parsed = jobApplicationInputSchema.safeParse(body);
 
     if (!parsed.success) {
@@ -46,7 +44,6 @@ export async function POST(req: Request) {
 
     await connectToDatabase();
 
-    // duplicate check
     const existing = await JobApplication.findOne({
       company: input.company,
       jobId: input.jobId,
@@ -62,31 +59,21 @@ export async function POST(req: Request) {
       );
     }
 
-    // business rule
-    const needsCustomResume = companyNeedsCustomResume(input.company);
-
-    // generate outputs
     const { excelRowText, starterPromptText } = generateOutputs(input);
 
     const applicationsRoot = process.env.APPLICATIONS_ROOT;
-    const baseResumeFilename = process.env.BASE_RESUME_FILENAME;
-    const baseCoverLetterFilename = process.env.BASE_COVER_LETTER_FILENAME;
 
-    if (!applicationsRoot || !baseResumeFilename || !baseCoverLetterFilename) {
+    if (!applicationsRoot) {
       return NextResponse.json(
-        { ok: false, error: "Missing file configuration in environment." },
+        { ok: false, error: "Missing APPLICATIONS_ROOT in environment." },
         { status: 500 }
       );
     }
 
-    const fileResult = await createApplicationFiles({
+    const folderResult = await createApplicationFolder({
       applicationsRoot,
-      baseResumeFilename,
-      baseCoverLetterFilename,
       company: input.company,
       jobId: input.jobId,
-      needsCustomResume,
-      
     });
 
     const created = await JobApplication.create({
@@ -94,10 +81,9 @@ export async function POST(req: Request) {
       jobId: input.jobId,
       jobTitle: input.jobTitle,
       jobUrl: input.jobUrl,
-      needsCustomResume,
-      folderPath: fileResult.folderPath,
-      resumePath: fileResult.resumePath,
-      coverLetterPath: fileResult.coverLetterPath,
+      folderPath: folderResult.folderPath,
+      resumePath: null,
+      coverLetterPath: null,
       excelRowText,
       starterPromptText,
     });
@@ -110,7 +96,7 @@ export async function POST(req: Request) {
     console.error("POST /api/job-applications failed:", error);
 
     return NextResponse.json(
-      { ok: false, error: "Internal server error - " + (error instanceof Error ? error.message : "Unknown error" )},
+      { ok: false, error: "Internal server error - " + (error instanceof Error ? error.message : "Unknown error") },
       { status: 500 }
     );
   }

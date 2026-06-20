@@ -56,6 +56,8 @@ export default function MainClient() {
   const [editJobUrl, setEditJobUrl] = useState("");
   const [editNotes, setEditNotes] = useState("");
 
+  const [creatingDoc, setCreatingDoc] = useState<"resume" | "coverLetter" | null>(null);
+
   async function loadApplications() {
     setLoading(true);
     setError(null);
@@ -252,6 +254,47 @@ export default function MainClient() {
     }
   }
 
+  async function createDocument(type: "resume" | "coverLetter") {
+    if (!selected) return;
+    setCreatingDoc(type);
+    setError(null);
+    try {
+      const res = await fetch(`/api/job-applications/${selected._id}/create-document`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        throw new Error(data.error || "Failed to create document.");
+      }
+      setApplications((current) =>
+        current.map((app) => (app._id === selected._id ? data.data : app))
+      );
+      setSelected(data.data);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to create document.";
+      setError(message);
+    } finally {
+      setCreatingDoc(null);
+    }
+  }
+
+  async function openFile(filePath: string) {
+    await fetch(`/api/job-applications/${selected?._id}/open-file`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ filePath }),
+    });
+  }
+
+  async function openFolder() {
+    if (!selected) return;
+    await fetch(`/api/job-applications/${selected._id}/open-folder`, {
+      method: "POST",
+    });
+  }
+
   const filteredApplications = useMemo(() => {
     return applications.filter((app) => {
       const search = searchTerm.trim().toLowerCase();
@@ -284,7 +327,6 @@ export default function MainClient() {
     });
   }, [filteredApplications, sortOrder]);
 
-  
   const summaryCounts = useMemo(() => ({
     total: applications.length,
     applied: applications.filter((app) => app.status === "Applied").length,
@@ -362,7 +404,6 @@ export default function MainClient() {
                   placeholder="Job Title"
                   required
                 />
-      
             </div>
 
             <div className="flex flex-col gap-1">
@@ -415,7 +456,6 @@ export default function MainClient() {
                     copiedLabel="Row Copied..."
                     className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 hover:cursor-pointer"
                   />
-
                 </div>
                 <textarea
                   value={createResult.excelRowText}
@@ -442,24 +482,6 @@ export default function MainClient() {
                   className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700"
                 />
               </div>
-
-              {(createResult.resumePath || createResult.coverLetterPath) && (
-                <div className="grid gap-1 text-sm text-slate-700">
-                  <h3 className="font-semibold text-slate-900">Created Files</h3>
-                  {createResult.resumePath && (
-                    <p>
-                      <span className="font-medium text-slate-900">Resume:</span>{" "}
-                      {createResult.resumePath}
-                    </p>
-                  )}
-                  {createResult.coverLetterPath && (
-                    <p>
-                      <span className="font-medium text-slate-900">Cover Letter:</span>{" "}
-                      {createResult.coverLetterPath}
-                    </p>
-                  )}
-                </div>
-              )}
             </div>
           )}
         </section>
@@ -591,6 +613,83 @@ export default function MainClient() {
 
             {selected && (
               <div className="grid gap-5">
+
+                {/* Document cards */}
+                <div className="flex items-center gap-3">
+                  {/* Resume card */}
+                  {selected.resumePath ? (
+                    <button
+                      type="button"
+                      onClick={() => openFile(selected.resumePath!)}
+                      className="flex flex-col items-center gap-2 rounded-xl border border-slate-300 bg-white p-4 w-32 hover:bg-slate-50 hover:cursor-pointer transition"
+                      title="Open Resume"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                      </svg>
+                      <span className="text-xs font-medium text-slate-600">Resume</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => createDocument("resume")}
+                      disabled={creatingDoc !== null}
+                      className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-slate-300 bg-white p-4 w-32 hover:bg-slate-50 hover:cursor-pointer transition disabled:opacity-60 disabled:cursor-not-allowed"
+                      title="Create Resume"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                      </svg>
+                      <span className="text-xs font-medium text-slate-400">
+                        {creatingDoc === "resume" ? "Creating..." : "Create Resume"}
+                      </span>
+                    </button>
+                  )}
+
+                  {/* Cover Letter card */}
+                  {selected.coverLetterPath ? (
+                    <button
+                      type="button"
+                      onClick={() => openFile(selected.coverLetterPath!)}
+                      className="flex flex-col items-center gap-2 rounded-xl border border-slate-300 bg-white p-4 w-32 hover:bg-slate-50 hover:cursor-pointer transition"
+                      title="Open Cover Letter"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                      </svg>
+                      <span className="text-xs font-medium text-slate-600">Cover Letter</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => createDocument("coverLetter")}
+                      disabled={creatingDoc !== null}
+                      className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-slate-300 bg-white p-4 w-32 hover:bg-slate-50 hover:cursor-pointer transition disabled:opacity-60 disabled:cursor-not-allowed"
+                      title="Create Cover Letter"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                      </svg>
+                      <span className="text-xs font-medium text-slate-400">
+                        {creatingDoc === "coverLetter" ? "Creating..." : "Cover Letter"}
+                      </span>
+                    </button>
+                  )}
+
+                  {/* Folder button */}
+                  <button
+                    type="button"
+                    onClick={openFolder}
+                    className="flex flex-col items-center gap-2 rounded-xl border border-slate-200 bg-white p-4 w-32 hover:bg-slate-50 hover:cursor-pointer transition"
+                    title="Open Folder"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" />
+                    </svg>
+                    <span className="text-xs font-medium text-slate-600">Open Folder</span>
+                  </button>
+                </div>
+
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="rounded-xl bg-slate-50 p-4">
                     <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -757,36 +856,6 @@ export default function MainClient() {
                       </button>
                     </>
                   )}
-
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      if (!selected) return;
-
-                      await fetch(`/api/job-applications/${selected._id}/open-folder`, {
-                        method: "POST",
-                      });
-                    }}
-                    className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 hover:cursor-pointer"
-                  >
-                    Open Folder
-                  </button>
-
-
-                </div>
-                <div>
-                {selected.resumePath && (
-                  <div className="text-sm text-slate-700">
-                    <span className="font-medium text-slate-900">Resume:</span>{" "}
-                    {selected.resumePath}
-                  </div>
-                )}
-                {selected.coverLetterPath && (
-                  <div className="text-sm text-slate-700">
-                    <span className="font-medium text-slate-900">Cover Letter:</span>{" "}
-                    {selected.coverLetterPath}
-                  </div>
-                )}
                 </div>
               </div>
             )}

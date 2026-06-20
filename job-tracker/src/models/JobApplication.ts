@@ -25,7 +25,7 @@ const JobApplicationSchema = new Schema(
     },
     needsCustomResume: {
       type: Boolean,
-      required: true,
+      default: null,
     },
     status: {
         type: String,
