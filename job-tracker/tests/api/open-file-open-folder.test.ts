@@ -1,12 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { resetJobApplications } from "../mocks/fakeJobApplication";
 
-const execMock = vi.fn((_cmd: string, cb?: (err: unknown) => void) => {
-  if (cb) cb(null);
-});
+const execFileMock = vi.fn(
+  (_cmd: string, _args: string[], cb?: (err: unknown) => void) => {
+    if (cb) cb(null);
+  }
+);
 
 vi.mock("child_process", () => ({
-  exec: (...args: unknown[]) => execMock(...(args as [string])),
+  execFile: (...args: unknown[]) => execFileMock(...(args as [string, string[]])),
 }));
 
 function ctx(id: string) {
@@ -14,13 +16,13 @@ function ctx(id: string) {
 }
 
 beforeEach(() => {
-  execMock.mockClear();
+  execFileMock.mockClear();
 });
 
 describe("POST /api/job-applications/[id]/open-file", () => {
-  it("SECURITY: shells out via child_process.exec with the raw filePath string-interpolated " +
-     "and unescaped -- a filePath containing shell metacharacters is executed verbatim " +
-     "(command injection)", async () => {
+  it("SECURITY FIX: uses execFile with an argument array (no shell involved), so a " +
+     "malicious filePath can't break out into additional commands -- it's passed as " +
+     "a single, literal argv element rather than shell-interpreted text", async () => {
     const { POST } = await import("@/app/api/job-applications/[id]/open-file/route");
 
     const malicious = `C:\\legit.docx" & calc.exe & "`;
@@ -33,15 +35,17 @@ describe("POST /api/job-applications/[id]/open-file", () => {
     const res = await POST(request);
     expect(res.status).toBe(200);
 
-    expect(execMock).toHaveBeenCalledTimes(1);
-    const [command] = execMock.mock.calls[0] as [string];
-    // The malicious payload appears verbatim in the shell command string.
-    expect(command).toContain("calc.exe");
-    expect(command).toBe(`start "" "${malicious}"`);
+    expect(execFileMock).toHaveBeenCalledTimes(1);
+    const [command, args] = execFileMock.mock.calls[0] as [string, string[]];
+    expect(command).toBe("cmd.exe");
+    // The payload is one array element among several -- never concatenated into
+    // a single shell-parsed string, so "& calc.exe &" has no special meaning.
+    expect(args).toEqual(["/c", "start", "", malicious]);
   });
 
-  it("PORTABILITY: uses the Windows-only 'start' shell command -- will fail on Linux/macOS " +
-     "and therefore inside a Linux container", async () => {
+  it("PORTABILITY (unfixed, deferred): still uses Windows-only commands (cmd.exe / " +
+     "start) -- will fail on Linux/macOS and therefore inside a Linux container. " +
+     "See TESTING_REPORT.md for the containerization discussion.", async () => {
     const { POST } = await import("@/app/api/job-applications/[id]/open-file/route");
     const request = new Request("http://localhost/x/open-file", {
       method: "POST",
@@ -49,8 +53,8 @@ describe("POST /api/job-applications/[id]/open-file", () => {
       body: JSON.stringify({ filePath: "C:\\some\\file.docx" }),
     });
     await POST(request);
-    const [command] = execMock.mock.calls[0] as [string];
-    expect(command.startsWith("start ")).toBe(true);
+    const [command] = execFileMock.mock.calls[0] as [string, string[]];
+    expect(command).toBe("cmd.exe");
   });
 
   it("returns 400 when filePath is missing", async () => {
@@ -62,24 +66,25 @@ describe("POST /api/job-applications/[id]/open-file", () => {
     });
     const res = await POST(request);
     expect(res.status).toBe(400);
-    expect(execMock).not.toHaveBeenCalled();
+    expect(execFileMock).not.toHaveBeenCalled();
   });
 });
 
 describe("POST /api/job-applications/[id]/open-folder", () => {
-  it("SECURITY + PORTABILITY: shells out via 'explorer \"<folderPath>\"' -- unescaped " +
-     "folderPath and Windows-only command (explorer.exe doesn't exist on Linux)", async () => {
+  it("SECURITY FIX: uses execFile with an argument array (no shell) to launch " +
+     "explorer.exe directly -- a malicious folderPath is inert", async () => {
     const { POST } = await import("@/app/api/job-applications/[id]/open-folder/route");
+    const malicious = `C:\\Jobs\\Acme" & calc.exe & "`;
     resetJobApplications([
-      { _id: "1", company: "A", jobId: "1", folderPath: `C:\\Jobs\\Acme" & calc.exe & "` },
+      { _id: "1", company: "A", jobId: "1", folderPath: malicious },
     ]);
 
     const res = await POST(new Request("http://localhost/x/open-folder", { method: "POST" }), ctx("1"));
     expect(res.status).toBe(200);
 
-    const [command] = execMock.mock.calls[0] as [string];
-    expect(command).toContain("calc.exe");
-    expect(command.startsWith("explorer ")).toBe(true);
+    const [command, args] = execFileMock.mock.calls[0] as [string, string[]];
+    expect(command).toBe("explorer.exe");
+    expect(args).toEqual([malicious]);
   });
 
   it("returns 404 when the application has no folderPath", async () => {
@@ -87,6 +92,6 @@ describe("POST /api/job-applications/[id]/open-folder", () => {
     resetJobApplications([{ _id: "1", company: "A", jobId: "1", folderPath: null }]);
     const res = await POST(new Request("http://localhost/x/open-folder", { method: "POST" }), ctx("1"));
     expect(res.status).toBe(404);
-    expect(execMock).not.toHaveBeenCalled();
+    expect(execFileMock).not.toHaveBeenCalled();
   });
 });

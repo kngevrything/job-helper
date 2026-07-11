@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/db/mongoose";
 import { JobApplication } from "@/models/JobApplication";
-import { exec } from "child_process";
+import { execFile } from "child_process";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -24,7 +24,9 @@ export async function POST(_: Request, context: RouteContext) {
 
     const folderPath = app.folderPath;
 
-    exec(`explorer "${folderPath}"`);
+    // See open-file/route.ts for why execFile + an argument array (not exec with
+    // a template string) is required here to avoid command injection.
+    execFile("explorer.exe", [folderPath]);
 
     return NextResponse.json({ ok: true });
   } catch (error) {

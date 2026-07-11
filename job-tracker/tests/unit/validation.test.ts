@@ -74,14 +74,23 @@ describe("jobApplicationInputSchema", () => {
     }
   });
 
-  it("does not reject company/jobId containing path traversal or path-separator characters", () => {
-    // Documents that filesystem-unsafe characters are not rejected at the validation layer.
+  it("SECURITY FIX: rejects company/jobId containing path traversal sequences", () => {
     const result = jobApplicationInputSchema.safeParse({
       ...valid,
       company: "../../etc",
       jobId: "..\\..\\Windows",
     });
-    expect(result.success).toBe(true);
+    expect(result.success).toBe(false);
+  });
+
+  it("SECURITY FIX: rejects company/jobId containing forward or back slashes, " +
+     "even without \"..\"", () => {
+    expect(
+      jobApplicationInputSchema.safeParse({ ...valid, company: "Acme/Corp" }).success
+    ).toBe(false);
+    expect(
+      jobApplicationInputSchema.safeParse({ ...valid, jobId: "123\\456" }).success
+    ).toBe(false);
   });
 });
 

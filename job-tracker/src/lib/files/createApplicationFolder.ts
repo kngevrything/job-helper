@@ -25,6 +25,21 @@ export async function createApplicationFolder(
 ): Promise<CreateApplicationFolderResult> {
   const jobFolder = path.join(input.applicationsRoot, input.company, input.jobId);
 
+  // Defense in depth: the API layer already rejects company/jobId containing
+  // path separators or "..", but this guarantees createApplicationFolder itself
+  // can never write outside applicationsRoot, regardless of caller (e.g. a
+  // future script or route that doesn't go through that same validation).
+  const resolvedRoot = path.resolve(input.applicationsRoot);
+  const resolvedFolder = path.resolve(jobFolder);
+  if (
+    resolvedFolder !== resolvedRoot &&
+    !resolvedFolder.startsWith(resolvedRoot + path.sep)
+  ) {
+    throw new Error(
+      "Resolved application folder is outside the applications root directory."
+    );
+  }
+
   if (await exists(jobFolder)) {
     throw new Error(
       "Application folder already exists on disk. Creation cancelled to avoid overwriting files."

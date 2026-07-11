@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { exec } from "child_process";
+import { execFile } from "child_process";
 
 export async function POST(req: Request) {
   try {
@@ -12,7 +12,12 @@ export async function POST(req: Request) {
       );
     }
 
-    exec(`start "" "${filePath}"`);
+    // execFile with an argument array never invokes a shell, so filePath can't
+    // break out into additional commands the way it could with
+    // exec(`start "" "${filePath}"`) (command injection). "start" is a cmd.exe
+    // builtin rather than its own executable, so cmd.exe still has to run it --
+    // but filePath is passed as one literal argv element, not shell-parsed text.
+    execFile("cmd.exe", ["/c", "start", "", filePath]);
 
     return NextResponse.json({ ok: true });
   } catch (error) {
