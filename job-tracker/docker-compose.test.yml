@@ -1,0 +1,24 @@
+# Disposable MongoDB for local testing only (unit/integration tests mock the DB
+# and don't need this; API/UI end-to-end tests in tests/e2e do).
+#
+# `npm run test:e2e` starts and stops this automatically (see
+# tests/e2e/global-setup.ts / global-teardown.ts) -- you don't need to run
+# these commands by hand. They're here for manually inspecting the test DB,
+# or resetting it completely:
+#   docker compose -f docker-compose.test.yml up -d
+#   docker compose -f docker-compose.test.yml down -v   # tear down + wipe data
+#
+# This is intentionally separate from any future production docker-compose.yml
+# for the app itself, and uses a non-default port/volume so it can't collide
+# with a real jobtracker instance.
+services:
+  mongo-test:
+    image: mongo:7.0
+    restart: unless-stopped
+    ports:
+      - "27117:27017"
+    volumes:
+      - jobtracker-test-mongo-data:/data/db
+
+volumes:
+  jobtracker-test-mongo-data:
