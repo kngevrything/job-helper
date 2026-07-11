@@ -272,6 +272,8 @@ export default function MainClient() {
         current.map((app) => (app._id === selected._id ? data.data : app))
       );
       setSelected(data.data);
+      const newPath = type === "resume" ? data.data.resumePath : data.data.coverLetterPath;
+      if (newPath) await openFile(newPath);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Failed to create document.";
       setError(message);
