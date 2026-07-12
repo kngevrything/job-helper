@@ -21,15 +21,14 @@ describe("generateOutputs", () => {
     ]);
   });
 
-  it("BUG: excelRowText column order is [date, company, jobId, jobUrl, jobTitle] here, " +
-     "but scripts/importCsv.js's generateExcelRowText produces [date, company, jobId, jobTitle, jobUrl] " +
-     "-- URL and Title are swapped between the live app and the import script", () => {
+  it("excelRowText column order is [date, company, jobId, jobUrl, jobTitle], matching " +
+     "the real spreadsheet header (...Company, Job ID, Link, Title...) -- " +
+     "scripts/importCsv.js's generateExcelRowText was previously out of sync with this " +
+     "(Title/URL swapped) and has been aligned to match", () => {
     const { excelRowText } = generateOutputs(input);
     const cols = excelRowText.split("\t");
-    // Column index 3 in the app's output is the URL...
     expect(cols[3]).toBe("https://example.com/job/1");
-    // ...but scripts/importCsv.js would put the Job Title there instead.
-    // If these two ever need to produce interchangeable Excel rows, this is a real inconsistency.
+    expect(cols[4]).toBe("Software Engineer");
   });
 
   it("starterPromptText includes company and job title", () => {

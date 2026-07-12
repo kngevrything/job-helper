@@ -87,12 +87,15 @@ function formatDateForExcel(date) {
 }
 
 function generateExcelRowText(input) {
+  // Column order must match the real spreadsheet header (...Company, Job ID,
+  // Link, Title...) and src/lib/prompts/generateOutputs.ts, which both put the
+  // URL before the Title. This used to be swapped here.
   return [
     formatDateForExcel(input.createdAt),
     input.company,
     input.jobId,
-    input.jobTitle,
     input.jobUrl,
+    input.jobTitle,
   ].join("\t");
 }
 
@@ -104,11 +107,6 @@ function generateStarterPromptText(input) {
   );
 }
 
-function companyNeedsCustomResume(company) {
-  const excluded = new Set(["microsoft", "github", "atlassian"]);
-  return !excluded.has(company.trim().toLowerCase());
-}
-
 const jobApplicationSchema = new mongoose.Schema(
   {
     company: { type: String, required: true, trim: true },
@@ -117,7 +115,6 @@ const jobApplicationSchema = new mongoose.Schema(
     jobUrl: { type: String, required: true, trim: true },
     status: { type: String, required: true, default: "Applied" },
     notes: { type: String, default: "" },
-    needsCustomResume: { type: Boolean, required: true },
     folderPath: { type: String, default: null },
     resumePath: { type: String, default: null },
     coverLetterPath: { type: String, default: null },
@@ -185,7 +182,6 @@ async function run() {
         jobUrl,
         status,
         notes,
-        needsCustomResume: companyNeedsCustomResume(company),
         folderPath: null,
         resumePath: null,
         coverLetterPath: null,

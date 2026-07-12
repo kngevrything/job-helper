@@ -76,7 +76,10 @@ export async function POST(req: Request, context: RouteContext) {
 
     const field = isResume ? "resumePath" : "coverLetterPath";
     const updatePayload: Record<string, unknown> = { [field]: destPath };
-    if (isResume) updatePayload.status = "Tailoring";
+    // Only advance a brand-new application into "Tailoring". Without this check,
+    // (re)creating a resume for an application that already progressed further
+    // (e.g. "2nd Round Scheduled") would silently regress its status back down.
+    if (isResume && app.status === "UNSET") updatePayload.status = "Tailoring";
 
     const updated = await JobApplication.findByIdAndUpdate(
       id,

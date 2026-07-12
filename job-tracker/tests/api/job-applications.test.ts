@@ -89,9 +89,8 @@ describe("POST /api/job-applications", () => {
     expect(res.status).toBe(500);
   });
 
-  it("BUG: the pre-check (findOne) + create is not atomic -- a genuine unique-index race " +
-     "would throw a raw duplicate-key error that isn't caught, producing a generic 500 " +
-     "instead of a clean 409", async () => {
+  it("BUG FIX: the pre-check (findOne) + create is still not atomic, but a genuine " +
+     "unique-index race now resolves to a clean 409 instead of a raw 500", async () => {
     resetJobApplications([]);
     // Simulate a concurrent insert landing *after* the route's findOne pre-check
     // has already returned null, but *before* create() runs: stub findOne to miss
@@ -109,9 +108,8 @@ describe("POST /api/job-applications", () => {
     const res = await POST(makeCreateRequest(validBody));
     const json = await res.json();
 
-    // Current behavior: generic 500 with a raw Mongo-style error message, not a 409.
-    expect(res.status).toBe(500);
-    expect(json.error).toMatch(/duplicate key/i);
+    expect(res.status).toBe(409);
+    expect(json.error).toMatch(/already exists/i);
 
     spy.mockRestore();
   });

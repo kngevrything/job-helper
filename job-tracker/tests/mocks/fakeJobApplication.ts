@@ -103,7 +103,6 @@ export const JobApplication = {
       folderPath: null,
       resumePath: null,
       coverLetterPath: null,
-      needsCustomResume: null,
       createdAt: new Date(),
       updatedAt: new Date(),
       ...data,

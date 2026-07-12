@@ -78,17 +78,18 @@ describe("POST /api/job-applications/[id]/create-document", () => {
     expect(copied).toBe("fake resume");
   });
 
-  it("BUG: creating a resume forcibly resets status to 'Tailoring' even if the application " +
-     "already progressed further (e.g. mid-interview) -- silently regresses tracked progress", async () => {
+  it("BUG FIX: creating a resume for an application that already progressed further " +
+     "(e.g. mid-interview) no longer regresses its status -- only a brand-new " +
+     "(UNSET) application advances to 'Tailoring'", async () => {
     resetJobApplications([
       { _id: "1", company: "A", jobId: "42", folderPath, status: "2nd Round Scheduled" },
     ]);
     const res = await POST(req("resume"), ctx("1"));
     const json = await res.json();
-    expect(json.data.status).toBe("Tailoring"); // regression from "2nd Round Scheduled"
+    expect(json.data.status).toBe("2nd Round Scheduled");
   });
 
-  it("cover letter creation does NOT change status (inconsistent with resume creation)", async () => {
+  it("cover letter creation never changes status, consistent with the fixed resume behavior", async () => {
     resetJobApplications([
       { _id: "1", company: "A", jobId: "42", folderPath, status: "2nd Round Scheduled" },
     ]);

@@ -23,10 +23,6 @@ const JobApplicationSchema = new Schema(
       required: true,
       trim: true,
     },
-    needsCustomResume: {
-      type: Boolean,
-      default: null,
-    },
     status: {
         type: String,
         required: true,

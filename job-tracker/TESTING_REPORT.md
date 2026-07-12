@@ -38,17 +38,17 @@ Both are still unresolved (deferred at your call — we tackled the security fin
 
 - **Real MongoDB password in `.env.local`.** Not a code bug, but since you're planning to open-source this: `.gitignore` already excludes `.env*`, so nothing has leaked. Before you `git init`/push anywhere, just double-check `.env.local` never gets force-added, and ship a `.env.example` with placeholder values for other users.
 
-## Functional bugs / inconsistencies
+## Fixed: small bugs found during testing
 
-- **Excel row column order mismatch.** `src/lib/prompts/generateOutputs.ts` produces `[date, company, jobId, jobUrl, jobTitle]`, but `scripts/importCsv.js`'s `generateExcelRowText` produces `[date, company, jobId, jobTitle, jobUrl]` — URL and title are swapped between the live app and the import script. If you ever compare/merge rows from both sources, they won't line up. Proven in `tests/unit/generateOutputs.test.ts`.
+- **Excel row column order mismatch — FIXED.** `src/lib/prompts/generateOutputs.ts` (the live app) produces `[date, company, jobId, jobUrl, jobTitle]`, matching the real spreadsheet header (`...Company, Job ID, Link, Title...`). `scripts/importCsv.js`'s `generateExcelRowText` was producing `[date, company, jobId, jobTitle, jobUrl]` — Title/URL swapped — and has been corrected to match.
 
-- **Creating a resume silently regresses application status.** `create-document/route.ts` unconditionally sets `status: "Tailoring"` whenever a resume file is created, with no check on the current status. If an application has already progressed (e.g. `"2nd Round Scheduled"`) and a resume gets (re)created for any reason, its status silently jumps backward to "Tailoring". Cover letter creation, by contrast, doesn't touch status at all — the two are inconsistent with each other. Proven in `tests/api/create-document.test.ts`.
+- **Creating a resume silently regressed application status — FIXED.** `create-document/route.ts` used to unconditionally set `status: "Tailoring"` whenever a resume file was created. Now it only does that when the application is still `"UNSET"` (i.e. brand new), so (re)creating a resume for an application that already progressed further (e.g. `"2nd Round Scheduled"`) no longer regresses its status.
 
-- **Duplicate-application race isn't handled cleanly.** `POST /api/job-applications` checks for an existing `{company, jobId}` via `findOne` before calling `create()`. That's a check-then-act race: if two requests land close together, the second can pass the `findOne` check and then hit the real unique-index violation inside `create()`, which isn't caught — it surfaces as a generic 500 with a raw `E11000 duplicate key` message instead of the clean 409 the UI expects (which shows "That application already exists."). Low real-world likelihood for a single-user local app, but easy to fix with a try/catch around `create()`. Proven in `tests/api/job-applications.test.ts`.
+- **Duplicate-application race now handled cleanly — FIXED.** `POST /api/job-applications` still checks for an existing `{company, jobId}` via `findOne` before calling `create()` (a check-then-act race), but a genuine unique-index violation from `create()` is now caught and returns the same clean 409 ("That application already exists.") instead of a raw 500 with a Mongo error message.
 
-- **`needsCustomResume` / `companyNeedsCustomResume` is dead code in the live app.** The model has a `needsCustomResume` field and `src/lib/files/companyRules.ts` has logic to compute it, but no API route or UI component ever calls `companyNeedsCustomResume()` — only the legacy `scripts/importCsv.js` uses it. Every application created through the app has `needsCustomResume: null` forever. Either wire it in or remove it; right now it's a feature that looks implemented but isn't.
+- **`needsCustomResume` / `companyNeedsCustomResume` — REMOVED.** This was a remnant from an earlier workflow (auto-generating resume/cover letter based on whether a company needed a custom one) that the live app no longer uses anywhere. Removed the model field and its usage in `scripts/importCsv.js`. `src/lib/files/companyRules.ts` and `tests/unit/companyRules.test.ts` are now fully orphaned (nothing imports them, but they still work together fine) — delete both manually, since I can't delete files myself.
 
-- **No delete/archive functionality anywhere** — API or UI. Might be intentional (append-only history), but flagging since it wasn't obvious either way.
+- **No delete/archive functionality anywhere** — API or UI. Might be intentional (append-only history), so left as-is; flagging in case it wasn't a deliberate choice.
 
 ## Dependency / build hygiene
 

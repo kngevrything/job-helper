@@ -5,6 +5,20 @@ import { jobApplicationInputSchema } from "@/lib/validation/jobApplication";
 import { generateOutputs } from "@/lib/prompts/generateOutputs";
 import { createApplicationFolder } from "@/lib/files/createApplicationFolder";
 
+// The findOne-then-create below has a check-then-act race: two near-simultaneous
+// requests can both pass the findOne check, and the second create() then trips
+// the real unique index on {company, jobId} in MongoDB (error code 11000).
+// Without this, that surfaces as a generic 500 instead of the same clean 409
+// the pre-check already returns for the (much more common) non-race case.
+function isDuplicateKeyError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: unknown }).code === 11000
+  );
+}
+
 export async function GET() {
   try {
     await connectToDatabase();
@@ -76,17 +90,31 @@ export async function POST(req: Request) {
       jobId: input.jobId,
     });
 
-    const created = await JobApplication.create({
-      company: input.company,
-      jobId: input.jobId,
-      jobTitle: input.jobTitle,
-      jobUrl: input.jobUrl,
-      folderPath: folderResult.folderPath,
-      resumePath: null,
-      coverLetterPath: null,
-      excelRowText,
-      starterPromptText,
-    });
+    let created;
+    try {
+      created = await JobApplication.create({
+        company: input.company,
+        jobId: input.jobId,
+        jobTitle: input.jobTitle,
+        jobUrl: input.jobUrl,
+        folderPath: folderResult.folderPath,
+        resumePath: null,
+        coverLetterPath: null,
+        excelRowText,
+        starterPromptText,
+      });
+    } catch (error) {
+      if (isDuplicateKeyError(error)) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error: "Application already exists for this company and job ID.",
+          },
+          { status: 409 }
+        );
+      }
+      throw error;
+    }
 
     return NextResponse.json({
       ok: true,
