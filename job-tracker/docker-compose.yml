@@ -21,6 +21,7 @@ services:
       APPLICATIONS_ROOT: /data/applications
       BASE_RESUME_FILENAME: ${BASE_RESUME_FILENAME}
       BASE_COVER_LETTER_FILENAME: ${BASE_COVER_LETTER_FILENAME}
+      APPLICANT_NAME: ${APPLICANT_NAME}
     volumes:
       - ${HOST_APPLICATIONS_DIR}:/data/applications
     depends_on:

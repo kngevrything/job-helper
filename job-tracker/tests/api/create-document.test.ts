@@ -29,6 +29,7 @@ beforeEach(async () => {
   process.env.APPLICATIONS_ROOT = appsRoot;
   process.env.BASE_RESUME_FILENAME = "Base Resume.docx";
   process.env.BASE_COVER_LETTER_FILENAME = "Base Cover Letter.docx";
+  process.env.APPLICANT_NAME = "Test Applicant";
 });
 
 afterEach(async () => {
@@ -46,6 +47,13 @@ describe("POST /api/job-applications/[id]/create-document", () => {
 
   it("returns 500 when file configuration env vars are missing", async () => {
     delete process.env.BASE_RESUME_FILENAME;
+    resetJobApplications([{ _id: "1", company: "A", jobId: "1", folderPath }]);
+    const res = await POST(req("resume"), ctx("1"));
+    expect(res.status).toBe(500);
+  });
+
+  it("returns 500 when APPLICANT_NAME is missing", async () => {
+    delete process.env.APPLICANT_NAME;
     resetJobApplications([{ _id: "1", company: "A", jobId: "1", folderPath }]);
     const res = await POST(req("resume"), ctx("1"));
     expect(res.status).toBe(500);
@@ -72,7 +80,7 @@ describe("POST /api/job-applications/[id]/create-document", () => {
 
     expect(res.status).toBe(200);
     expect(json.data.status).toBe("Tailoring");
-    expect(json.data.resumePath).toBe(path.join(folderPath, "Kevin Liedtke Resume 42.docx"));
+    expect(json.data.resumePath).toBe(path.join(folderPath, "Test Applicant Resume 42.docx"));
 
     const copied = await fs.readFile(json.data.resumePath, "utf-8");
     expect(copied).toBe("fake resume");
@@ -96,11 +104,11 @@ describe("POST /api/job-applications/[id]/create-document", () => {
     const res = await POST(req("coverLetter"), ctx("1"));
     const json = await res.json();
     expect(json.data.status).toBe("2nd Round Scheduled");
-    expect(json.data.coverLetterPath).toBe(path.join(folderPath, "Kevin Liedtke Cover Letter 42.docx"));
+    expect(json.data.coverLetterPath).toBe(path.join(folderPath, "Test Applicant Cover Letter 42.docx"));
   });
 
   it("returns 409 if the destination file already exists, without overwriting it", async () => {
-    const destPath = path.join(folderPath, "Kevin Liedtke Resume 42.docx");
+    const destPath = path.join(folderPath, "Test Applicant Resume 42.docx");
     await fs.writeFile(destPath, "pre-existing content");
     resetJobApplications([{ _id: "1", company: "A", jobId: "42", folderPath }]);
 

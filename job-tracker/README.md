@@ -60,6 +60,7 @@ See `.env.example` for the full list with descriptions. Summary:
 | `APPLICATIONS_ROOT` | (non-Docker only) local path used directly as the applications folder |
 | `BASE_RESUME_FILENAME` | Filename of your base resume template, expected inside the applications folder |
 | `BASE_COVER_LETTER_FILENAME` | Filename of your base cover letter template, expected inside the applications folder |
+| `APPLICANT_NAME` | Your name, used in generated filenames (e.g. `Jane Smith Resume 12345.docx`) |
 
 ## Known Limitations
 

@@ -32,8 +32,9 @@ export async function POST(req: Request, context: RouteContext) {
     const applicationsRoot = process.env.APPLICATIONS_ROOT;
     const baseResumeFilename = process.env.BASE_RESUME_FILENAME;
     const baseCoverLetterFilename = process.env.BASE_COVER_LETTER_FILENAME;
+    const applicantName = process.env.APPLICANT_NAME;
 
-    if (!applicationsRoot || !baseResumeFilename || !baseCoverLetterFilename) {
+    if (!applicationsRoot || !baseResumeFilename || !baseCoverLetterFilename || !applicantName) {
       return NextResponse.json(
         { ok: false, error: "Missing file configuration in environment." },
         { status: 500 }
@@ -62,7 +63,7 @@ export async function POST(req: Request, context: RouteContext) {
     const baseFilename = isResume ? baseResumeFilename : baseCoverLetterFilename;
     const label = isResume ? "Resume" : "Cover Letter";
     const sourcePath = path.join(applicationsRoot, baseFilename);
-    const destFilename = `Kevin Liedtke ${label} ${app.jobId}.docx`;
+    const destFilename = `${applicantName} ${label} ${app.jobId}.docx`;
     const destPath = path.join(app.folderPath, destFilename);
 
     if (await fileExists(destPath)) {
