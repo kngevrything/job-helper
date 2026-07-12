@@ -1,0 +1,20 @@
+node_modules
+.next
+.git
+.env*
+!.env.example
+
+# tests / test artifacts
+tests
+playwright-report
+test-results
+coverage
+
+# docs / local-only files
+TESTING_REPORT.md
+README.md
+*.csv
+start_job_tracker.bat
+
+# test-only compose file (docker-compose.test.yml is not part of the image)
+docker-compose.test.yml

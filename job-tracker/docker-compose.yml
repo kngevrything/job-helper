@@ -1,0 +1,46 @@
+# Production compose file for running the app itself. Distinct from
+# docker-compose.test.yml, which only spins up a disposable Mongo for the
+# automated test suite.
+#
+# Quick start:
+#   1. cp .env.example .env   and fill in HOST_APPLICATIONS_DIR (and
+#      MONGODB_URI if you're pointing at your own MongoDB instead of the
+#      bundled `mongo` service below).
+#   2. docker compose up -d --build
+#
+# HOST_APPLICATIONS_DIR must be a real folder on your machine -- application
+# folders and copies of your resume/cover letter get created there, so you
+# can browse/edit/sync them normally (OneDrive, Dropbox, etc.).
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      MONGODB_URI: ${MONGODB_URI:-mongodb://mongo:27017/jobtracker}
+      APPLICATIONS_ROOT: /data/applications
+      BASE_RESUME_FILENAME: ${BASE_RESUME_FILENAME}
+      BASE_COVER_LETTER_FILENAME: ${BASE_COVER_LETTER_FILENAME}
+    volumes:
+      - ${HOST_APPLICATIONS_DIR}:/data/applications
+    depends_on:
+      mongo:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Bundled MongoDB for anyone who doesn't already run their own. If you point
+  # MONGODB_URI at an external instance instead, this service is unused --
+  # feel free to delete it, or just leave it running idle.
+  mongo:
+    image: mongo:7.0
+    volumes:
+      - jobtracker-mongo-data:/data/db
+    healthcheck:
+      test: mongosh --quiet --eval 'db.runCommand("ping").ok' || exit 1
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  jobtracker-mongo-data:
