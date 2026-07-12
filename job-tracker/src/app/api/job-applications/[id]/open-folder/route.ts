@@ -3,6 +3,10 @@ import { connectToDatabase } from "@/lib/db/mongoose";
 import { JobApplication } from "@/models/JobApplication";
 import { execFile } from "child_process";
 
+// REVERTED (see TESTING_REPORT.md): a client-side "copy folder path" version
+// of this was tried alongside the open-file revert, for consistency, and
+// rolled back for the same reason -- see open-file/route.ts.
+
 type RouteContext = {
   params: Promise<{ id: string }>;
 };

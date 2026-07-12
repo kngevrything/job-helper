@@ -43,9 +43,11 @@ describe("POST /api/job-applications/[id]/open-file", () => {
     expect(args).toEqual(["/c", "start", "", malicious]);
   });
 
-  it("PORTABILITY (unfixed, deferred): still uses Windows-only commands (cmd.exe / " +
-     "start) -- will fail on Linux/macOS and therefore inside a Linux container. " +
-     "See TESTING_REPORT.md for the containerization discussion.", async () => {
+  it("PORTABILITY (deliberately unfixed, see TESTING_REPORT.md): still uses " +
+     "Windows-only commands (cmd.exe / start) -- will fail on Linux/macOS and " +
+     "therefore inside a Linux container. A container-portable HTTP-download " +
+     "replacement was tried and reverted because it broke the 'edit in place' " +
+     "workflow this app is built around.", async () => {
     const { POST } = await import("@/app/api/job-applications/[id]/open-file/route");
     const request = new Request("http://localhost/x/open-file", {
       method: "POST",
@@ -95,3 +97,8 @@ describe("POST /api/job-applications/[id]/open-folder", () => {
     expect(execFileMock).not.toHaveBeenCalled();
   });
 });
+
+// Note: GET /api/job-applications/[id]/file was a container-portable
+// HTTP-download replacement for open-file's shell-exec approach, tried and
+// reverted (see TESTING_REPORT.md), then deleted outright along with this
+// suite's coverage of it.
