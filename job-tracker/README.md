@@ -24,6 +24,8 @@ Requires Docker and Docker Compose.
 
 3. Stop it with `docker compose down` (add `-v` to also wipe the bundled Mongo's data volume).
 
+Note: the "Resume"/"Cover Letter"/"Open Folder" buttons in the UI don't work when running via Docker. See [Known Limitations](#known-limitations).
+
 ## Running without Docker
 
 Requires Node.js >=20.9 and a reachable MongoDB instance.
@@ -45,7 +47,7 @@ npm test          # unit + API tests (Vitest), no external services needed
 npm run test:e2e  # Playwright end-to-end tests; starts/stops a disposable test Mongo automatically
 ```
 
-See `TESTING_REPORT.md` for the results of a full test/security pass over the app, including known limitations.
+`npm test` runs 60 unit and API tests covering validation, status rules, output generation, folder/file creation, and all API routes. `npm run test:e2e` runs 8 Playwright browser tests covering the create/edit/status-change flow, duplicate rejection, search, and typeahead behavior; it manages its own disposable MongoDB container via `scripts/run-e2e.mjs`.
 
 ## Environment variables
 
@@ -58,3 +60,21 @@ See `.env.example` for the full list with descriptions. Summary:
 | `APPLICATIONS_ROOT` | (non-Docker only) local path used directly as the applications folder |
 | `BASE_RESUME_FILENAME` | Filename of your base resume template, expected inside the applications folder |
 | `BASE_COVER_LETTER_FILENAME` | Filename of your base cover letter template, expected inside the applications folder |
+
+## Known Limitations
+
+- **Opening files/folders only works when running natively, not in Docker.** The "Resume", "Cover Letter", and "Open Folder" buttons shell out to Windows commands (`cmd.exe`, `explorer.exe`) on the server's own machine, so edits made in Word save back directly to the tracked application folder. This requires the server and browser to be on the same Windows machine, and does not work in any Docker deployment of this app — including Docker Desktop running locally, since containers run as Linux internally regardless of the host OS. Run the app natively (`npm run dev` / `npm start`) if these buttons need to work.
+- **`next build` requires network access** to fetch the Geist/Geist Mono fonts from Google (`next/font/google` in `src/app/layout.tsx`). Builds in offline or network-restricted environments will fail unless the fonts are self-hosted or swapped to `next/font/local`.
+- **No delete/archive functionality.** Application records are append-only; there's currently no way to remove or archive an entry from the API or UI.
+- **`scripts/importCsv.js` bypasses folder-path validation.** Unlike the API routes, the CSV import script writes directly to MongoDB and does not validate `company`/`jobId` against path traversal. Only run it against trusted CSV data.
+
+## Security notes
+
+- `company`/`jobId` input is validated against path traversal (rejects `..`, `/`, `\`) both at the API layer and again in `createApplicationFolder`, as defense in depth.
+- File/folder opening uses `execFile()` with argument arrays rather than a shell-interpreted string, so file paths can't be used for command injection.
+- `.gitignore` excludes all `.env*` files except `.env.example`; double-check `.env.local`/`.env` are never force-added before pushing.
+
+## Known issues
+
+- `next@16.2.1` has published security advisories (DoS, cache poisoning, middleware bypass) fixed in `16.2.10+` — a safe, low-risk same-minor upgrade.
+- `npm run lint` currently fails on `scripts/importCsv.js` and `scripts/backfillEndedAt.js` (`require()` imports) and warns on an unused import in `src/lib/dashboard.ts`.
