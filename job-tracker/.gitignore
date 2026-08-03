@@ -38,6 +38,10 @@ yarn-error.log*
 .env*
 !.env.example
 
+# personal data (local import files, not for public repo)
+/import.csv
+/import-first.csv
+
 # vercel
 .vercel
 
