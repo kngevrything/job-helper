@@ -61,6 +61,7 @@ export const STATUS_GROUPS = [
       "Final Round Scheduled",
       "Final Round Done",
       "Final Round Exit",
+      "Position Eliminated",
     ],
   },
   {
@@ -93,6 +94,9 @@ export const TERMINAL_STATUSES = [
 
   // Special case
   "2nd Round, Declined to Proceed",
+
+  // Position closed
+  "Position Eliminated",
 ] as const
 
 export function isTerminalStatus(status: string): boolean {
