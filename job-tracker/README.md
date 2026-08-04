@@ -62,6 +62,14 @@ See `.env.example` for the full list with descriptions. Summary:
 | `BASE_COVER_LETTER_FILENAME` | Filename of your base cover letter template, expected inside the applications folder |
 | `APPLICANT_NAME` | Your name, used in generated filenames (e.g. `Jane Smith Resume 12345.docx`) |
 
+## Customizing outputs
+
+When you create an application, the app generates two text outputs:
+
+**Excel row (legacy):** A tab-separated row for pasting into a tracking spreadsheet. Columns in order: `Date`, `Company`, `Job ID`, `Job URL`, `Job Title`. If you don't use a spreadsheet, ignore this field.
+
+**Starter prompt:** A prompt you can paste into an AI chat to kick off a resume tailoring session for that role. To customize it, copy `src/lib/prompts/userConfig.example.ts` to `src/lib/prompts/userConfig.local.ts` (gitignored) and edit the template to match your workflow.
+
 ## Known Limitations
 
 - **Opening files/folders only works when running natively, not in Docker.** The "Resume", "Cover Letter", and "Open Folder" buttons shell out to Windows commands (`cmd.exe`, `explorer.exe`) on the server's own machine, so edits made in Word save back directly to the tracked application folder. This requires the server and browser to be on the same Windows machine, and does not work in any Docker deployment of this app — including Docker Desktop running locally, since containers run as Linux internally regardless of the host OS. Run the app natively (`npm run dev` / `npm start`) if these buttons need to work.

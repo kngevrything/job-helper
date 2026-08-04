@@ -42,6 +42,9 @@ yarn-error.log*
 /import.csv
 /import-first.csv
 
+# personal workflow config (copy userConfig.example.ts to userConfig.local.ts)
+src/lib/prompts/userConfig.local.ts
+
 # vercel
 .vercel
 
