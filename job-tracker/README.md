@@ -78,7 +78,7 @@ See `.env.example` for the full list with descriptions. Summary:
 ## Known issues
 
 - `next@16.2.1` has published security advisories (DoS, cache poisoning, middleware bypass) fixed in `16.2.10+` — a safe, low-risk same-minor upgrade.
-- `npm run lint` currently fails on `scripts/importCsv.js` and `scripts/backfillEndedAt.js` (`require()` imports) and warns on an unused import in `src/lib/dashboard.ts`.
+- `npm run lint` currently fails on `scripts/importCsv.js` and `scripts/backfillEndedAt.js` (`require()` imports).
 
 ## License
 
