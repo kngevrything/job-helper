@@ -14,6 +14,8 @@ Status tracking, notes, and pipeline management. Folder creation and file-openin
 
 Requires Node.js >=20.9 and a reachable MongoDB instance. No MongoDB database or collection setup is needed — the app creates them automatically on first use.
 
+If you don't have MongoDB installed, [MongoDB Community Server](https://www.mongodb.com/try/download/community) is free and straightforward to set up locally. Once running, your connection string will be `mongodb://localhost:27017`.
+
 1. Clone the repo and install dependencies:
 
    ```bash
@@ -102,14 +104,14 @@ npm run test:e2e  # Playwright end-to-end tests; starts/stops a disposable test 
 
 See `.env.example` for the full list with descriptions. Summary:
 
-| Variable | Purpose |
-| --- | --- |
-| `MONGODB_URI` | MongoDB connection string. Defaults to the bundled instance when using Docker. |
-| `HOST_APPLICATIONS_DIR` | (Docker only) Host path bind-mounted into the container as the applications folder. |
-| `APPLICATIONS_ROOT` | (Native only) Local path used directly as the applications folder. |
-| `BASE_RESUME_FILENAME` | Filename of your base resume template, expected inside the applications folder. |
+| Variable                     | Purpose                                                                               |
+| ---------------------------- | ------------------------------------------------------------------------------------- |
+| `MONGODB_URI`                | MongoDB connection string. Defaults to the bundled instance when using Docker.        |
+| `HOST_APPLICATIONS_DIR`      | (Docker only) Host path bind-mounted into the container as the applications folder.   |
+| `APPLICATIONS_ROOT`          | (Native only) Local path used directly as the applications folder.                    |
+| `BASE_RESUME_FILENAME`       | Filename of your base resume template, expected inside the applications folder.       |
 | `BASE_COVER_LETTER_FILENAME` | Filename of your base cover letter template, expected inside the applications folder. |
-| `APPLICANT_NAME` | Your name, used in generated filenames (e.g. `Jane Smith Resume 12345.docx`). |
+| `APPLICANT_NAME`             | Your name, used in generated filenames (e.g. `Jane Smith Resume 12345.docx`).         |
 
 ## Known limitations
 
