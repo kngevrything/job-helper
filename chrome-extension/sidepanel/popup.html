@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Job App Tracker</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <header class="header">
+    <h1>Job App Tracker</h1>
+    <button id="settingsToggle" class="icon-btn" title="Settings">⚙</button>
+  </header>
+
+  <section id="settingsPanel" class="settings-panel hidden">
+    <label for="apiBaseUrl">Mongo API base URL</label>
+    <input
+      id="apiBaseUrl"
+      type="text"
+      placeholder="http://localhost:3000  or  http://homelab.local:3000"
+    />
+    <button id="connectBtn">Connect</button>
+    <p id="connectionStatus" class="status-text"></p>
+  </section>
+
+  <main id="mainView">
+    <div id="notConnectedNotice" class="notice hidden">
+      Set your API base URL in settings (⚙) and click Connect before
+      capturing or updating applications.
+    </div>
+
+    <div id="scrapeNotice" class="notice hidden"></div>
+
+    <form id="captureForm">
+      <label for="jobTitle">Job title</label>
+      <input id="jobTitle" name="jobTitle" type="text" required />
+
+      <label for="company">Company</label>
+      <input id="company" name="company" type="text" required />
+
+      <label for="jobUrl">Job URL</label>
+      <input id="jobUrl" name="jobUrl" type="text" required />
+
+      <label for="jobId">Job ID</label>
+      <input id="jobId" name="jobId" type="text" />
+
+      <label class="checkbox-row">
+        <input id="createFiles" name="createFiles" type="checkbox" checked />
+        Create files (excelRowText / starterPromptText)
+      </label>
+
+      <div class="button-row">
+        <button type="button" id="rescanBtn">Rescan</button>
+        <button type="button" id="clearDraftBtn">Clear</button>
+      </div>
+      <div class="button-row">
+        <button type="submit" id="submitBtn">Save application</button>
+      </div>
+    </form>
+
+    <div id="resultMessage" class="result-message hidden"></div>
+
+    <div id="outputsSection" class="outputs-section hidden">
+      <div class="output-block">
+        <div class="output-header">
+          <label>Excel row</label>
+          <button type="button" class="copy-btn" data-target="excelRowOutput">Copy</button>
+        </div>
+        <textarea id="excelRowOutput" class="output-textarea" rows="2" readonly wrap="off"></textarea>
+      </div>
+      <div class="output-block">
+        <div class="output-header">
+          <label>Starter prompt</label>
+          <button type="button" class="copy-btn" data-target="starterPromptOutput">Copy</button>
+        </div>
+        <textarea id="starterPromptOutput" class="output-textarea" rows="8" readonly></textarea>
+      </div>
+    </div>
+  </main>
+
+  <script src="popup.js"></script>
+</body>
+</html>

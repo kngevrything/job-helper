@@ -1,0 +1,37 @@
+{
+  "manifest_version": 3,
+  "name": "Job App Tracker Bridge",
+  "version": "0.1.0",
+  "description": "Capture and update job applications, writing straight to your Next.js/Mongo API.",
+  "action": {
+    "default_title": "Job App Tracker"
+  },
+  "side_panel": {
+    "default_path": "sidepanel/popup.html"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "permissions": ["storage", "activeTab", "scripting", "tabs", "sidePanel"],
+  "host_permissions": [
+    "*://*.greenhouse.io/*",
+    "*://*.linkedin.com/*"
+  ],
+  "optional_host_permissions": [
+    "http://localhost/*",
+    "https://localhost/*",
+    "<all_urls>"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["*://*.greenhouse.io/*"],
+      "js": ["content-scripts/greenhouse.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["*://*.linkedin.com/jobs/*"],
+      "js": ["content-scripts/linkedin.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
