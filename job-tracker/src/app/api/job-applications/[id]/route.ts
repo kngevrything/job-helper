@@ -56,3 +56,29 @@ export async function PATCH(req: Request, context: RouteContext) {
     );
   }
 }
+
+export async function DELETE(_req: Request, context: RouteContext) {
+  try {
+    const { id } = await context.params;
+
+    await connectToDatabase();
+
+    const deleted = await JobApplication.findByIdAndDelete(id).lean();
+
+    if (!deleted) {
+      return NextResponse.json(
+        { ok: false, error: "Application not found." },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    console.error("DELETE /api/job-applications/[id] failed:", error);
+
+    return NextResponse.json(
+      { ok: false, error: "Failed to remove application." },
+      { status: 500 }
+    );
+  }
+}

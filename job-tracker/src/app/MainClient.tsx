@@ -47,6 +47,7 @@ export default function MainClient() {
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [updating, setUpdating] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
   const [createResult, setCreateResult] = useState<CreateResult | null>(null);
@@ -251,6 +252,41 @@ export default function MainClient() {
       setError(message);
     } finally {
       setUpdating(false);
+    }
+  }
+
+  async function deleteApplication() {
+    if (!selected) return;
+
+    const confirmed = window.confirm(
+      `Remove application for ${selected.company} — ${selected.jobTitle}? This cannot be undone.`
+    );
+    if (!confirmed) return;
+
+    setDeleting(true);
+    setError(null);
+
+    try {
+      const res = await fetch(`/api/job-applications/${selected._id}`, {
+        method: "DELETE",
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.ok) {
+        throw new Error(data.error || "Failed to remove application.");
+      }
+
+      const removedId = selected._id;
+      setApplications((current) => current.filter((app) => app._id !== removedId));
+      setSelected(null);
+      setIsEditing(false);
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Failed to remove application.";
+      setError(message);
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -831,13 +867,23 @@ export default function MainClient() {
 
                 <div className="flex flex-wrap gap-3">
                   {!isEditing ? (
-                    <button
-                      type="button"
-                      onClick={startEditing}
-                      className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800 hover:cursor-pointer"
-                    >
-                      Edit
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        onClick={startEditing}
+                        className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800 hover:cursor-pointer"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={deleteApplication}
+                        disabled={deleting}
+                        className="rounded-xl border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60 hover:cursor-pointer"
+                      >
+                        {deleting ? "Removing..." : "Remove"}
+                      </button>
+                    </>
                   ) : (
                     <>
                       <button
