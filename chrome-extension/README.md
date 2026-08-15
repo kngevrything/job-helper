@@ -40,9 +40,25 @@ tab active at the moment you first clicked the icon). `tabs` is broader:
 it lets the extension read the URL/title of any open tab, not just
 that one.
 
-**Not wired up yet:** the panel doesn't currently auto-rescan when you
-switch to a different job posting tab — you still click Rescan. Could
-add a `chrome.tabs.onActivated` listener for that if useful.
+**Auto-rescan:** the panel now rescans automatically on tab switch, on
+tab navigation completing, and on browser window focus change — no
+more manually clicking Rescan after switching tabs. If the newly active
+tab's content script isn't reachable (most commonly: that tab was
+already open before the extension was loaded/reloaded, so Chrome never
+auto-injected it), the panel injects it on demand via
+`chrome.scripting.executeScript` and retries once, instead of asking
+you to reload the tab yourself.
+
+**Known trade-off:** auto-rescan overwrites whatever's currently in the
+form the moment it detects a switch to a recognized job site — so if
+you're mid-edit and briefly alt-tab away and back, expect your typed
+values to get replaced by a fresh scrape rather than preserved. The
+300ms draft autosave should have already captured your edits before you
+switched, so nothing's unrecoverable, but the visible fields will
+change without a prompt. The tab/window listeners also aren't scoped to
+just this panel's own window — switching tabs in an unrelated browser
+window triggers a redundant (harmless, just wasted) rescan too, since
+there's no cheap way to filter that from a side panel context.
 
 ## Why "Connect" instead of it just working
 

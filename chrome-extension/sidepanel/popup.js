@@ -181,6 +181,23 @@ function detectSite(url) {
   return null;
 }
 
+const CONTENT_SCRIPT_BY_SITE = {
+  greenhouse: 'content-scripts/greenhouse.js',
+  linkedin: 'content-scripts/linkedin.js',
+  workday: 'content-scripts/workday.js',
+};
+
+async function injectContentScript(tabId, site) {
+  const file = CONTENT_SCRIPT_BY_SITE[site];
+  if (!file) return false;
+  try {
+    await chrome.scripting.executeScript({ target: { tabId }, files: [file] });
+    return true;
+  } catch (err) {
+    return false;
+  }
+}
+
 async function runScrape() {
   els.scrapeNotice.classList.add('hidden');
   const tab = await getSourceTab();
@@ -195,28 +212,52 @@ async function runScrape() {
       'No scraper for this site yet (Greenhouse, LinkedIn, Workday so far) — enter details manually.',
       true
     );
+    await populateForm({});
     return;
   }
 
+  let response;
+  let reachable = true;
   try {
-    const response = await chrome.tabs.sendMessage(tab.id, { type: 'SCRAPE_JOB' });
-    if (!response || !response.ok) {
-      showScrapeNotice('Scrape failed on this page — enter details manually.', true);
-      return;
-    }
-    populateForm(response);
-    await saveDraft();
-    if (response.confidence === 'high') {
-      showScrapeNotice('Captured from page structured data.', false);
-    } else {
-      showScrapeNotice(
-        'Captured from page — unverified, please confirm before saving.',
-        true
-      );
-    }
+    response = await chrome.tabs.sendMessage(tab.id, { type: 'SCRAPE_JOB' });
   } catch (err) {
+    // Most likely cause: this tab was already open before the extension
+    // was loaded/reloaded. Chrome only auto-injects manifest-declared
+    // content scripts on future navigations, not retroactively into
+    // tabs that were already open -- so inject it on demand and retry
+    // once instead of asking the user to reload the tab themselves.
+    const injected = await injectContentScript(tab.id, site);
+    if (injected) {
+      try {
+        response = await chrome.tabs.sendMessage(tab.id, { type: 'SCRAPE_JOB' });
+      } catch (retryErr) {
+        reachable = false;
+      }
+    } else {
+      reachable = false;
+    }
+  }
+
+  if (!reachable) {
     showScrapeNotice(
-      'Could not reach the page scraper (try reloading the tab) — enter details manually.',
+      'Page loaded before extension, reload page or enter details manually.',
+      true
+    );
+    return;
+  }
+
+  if (!response || !response.ok) {
+    showScrapeNotice('Scrape failed on this page — enter details manually.', true);
+    return;
+  }
+
+  populateForm(response);
+  await saveDraft();
+  if (response.confidence === 'high') {
+    showScrapeNotice('Captured from page structured data.', false);
+  } else {
+    showScrapeNotice(
+      'Captured from page — unverified, please confirm before saving.',
       true
     );
   }
@@ -430,6 +471,35 @@ els.form.addEventListener('submit', async (e) => {
   }
 });
 
+// ---- Auto-rescan on tab/window changes -----------------------------------
+// The side panel stays open across tab switches (that's the whole point),
+// but nothing was previously triggering a rescan when the active tab
+// actually changed -- so it either kept showing the previous tab's data,
+// or (for tabs that predate the extension load) failed outright. This
+// listens for the three ways "what I'm looking at" can change and
+// re-runs the scrape, reusing runScrape()'s injection-retry logic.
+
+const autoRescanDebounced = debounce(() => {
+  runScrape();
+}, 400);
+
+function attachAutoRescan() {
+  chrome.tabs.onActivated.addListener(() => {
+    autoRescanDebounced();
+  });
+
+  chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+    if (changeInfo.status === 'complete' && tab.active) {
+      autoRescanDebounced();
+    }
+  });
+
+  chrome.windows.onFocusChanged.addListener((windowId) => {
+    if (windowId === chrome.windows.WINDOW_ID_NONE) return;
+    autoRescanDebounced();
+  });
+}
+
 // ---- Init ---------------------------------------------------------------
 
 (async function init() {
@@ -466,4 +536,5 @@ els.form.addEventListener('submit', async (e) => {
   }
 
   attachDraftAutosave();
+  attachAutoRescan();
 })();
