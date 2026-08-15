@@ -244,9 +244,17 @@ els.clearDraftBtn.addEventListener('click', async () => {
 // showing nothing or making something up.
 
 function showOutputs(excelRowText, starterPromptText) {
+  const hasAnyContent = Boolean(
+    (excelRowText && excelRowText.trim()) || (starterPromptText && starterPromptText.trim())
+  );
+
   els.excelRowOutput.value = excelRowText || '';
   els.starterPromptOutput.value = starterPromptText || '';
-  els.outputsSection.classList.remove('hidden');
+
+  // Section only shows at all if there's something to copy -- no point
+  // hiding/showing the two blocks independently when they always arrive
+  // together in practice.
+  els.outputsSection.classList.toggle('hidden', !hasAnyContent);
 }
 
 function hideOutputs() {
