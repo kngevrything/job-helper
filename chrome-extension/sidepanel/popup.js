@@ -177,6 +177,7 @@ function detectSite(url) {
   const host = new URL(url).hostname;
   if (/(^|\.)greenhouse\.io$/.test(host)) return 'greenhouse';
   if (/(^|\.)linkedin\.com$/.test(host)) return 'linkedin';
+  if (/(^|\.)myworkdayjobs\.com$/.test(host)) return 'workday';
   return null;
 }
 
@@ -191,7 +192,7 @@ async function runScrape() {
   const site = detectSite(tab.url);
   if (!site) {
     showScrapeNotice(
-      'No scraper for this site yet (Greenhouse and LinkedIn so far) — enter details manually.',
+      'No scraper for this site yet (Greenhouse, LinkedIn, Workday so far) — enter details manually.',
       true
     );
     return;

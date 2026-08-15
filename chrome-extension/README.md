@@ -1,9 +1,9 @@
-# Job App Tracker Bridge — Phase 0 (scaffold + Greenhouse + LinkedIn capture)
+# Job App Tracker Bridge — Phase 0 (scaffold + Greenhouse + LinkedIn + Workday capture)
 
-Status: task 1 (scaffold), task 2's Greenhouse and LinkedIn scrapers, and
-the first half of task 3 (capture flow against Mongo) from
-`phase-0-scope.md`. Update flow, Indeed, the generic fallback, and the
-excelRowText/starterPromptText regeneration client-side aren't built —
+Status: task 1 (scaffold), task 2's Greenhouse, LinkedIn, and Workday
+scrapers, and the first half of task 3 (capture flow against Mongo)
+from `phase-0-scope.md`. Update flow, Indeed, the generic fallback, and
+client-side excelRowText/starterPromptText regeneration aren't built —
 this proves capture end-to-end first.
 
 ## Load it
@@ -63,8 +63,9 @@ one-line change once you know the final hostname.
 
 ## What works right now
 
-- Open a Greenhouse or LinkedIn job posting. Content scripts run
-  automatically on `*.greenhouse.io` and `linkedin.com/jobs/*`.
+- Open a Greenhouse, LinkedIn, or Workday-hosted (`*.myworkdayjobs.com`
+  — Autodesk and many other large employers) job posting. Content
+  scripts run automatically on all three.
 - Click the extension icon (opens the side panel) — it scrapes
   `jobTitle`, `company`, `jobUrl`, `jobId` from the page and pre-fills
   the form. Low-confidence scrapes are flagged "unverified — please
@@ -81,6 +82,20 @@ one-line change once you know the final hostname.
     `?currentJobId=` query param — the saved `jobUrl` is normalized to
     the canonical `/jobs/view/<id>/` form when an id was found, since
     search/collections URLs aren't stable permalinks to the posting.
+  - **Workday:** tries Workday's own internal JSON API first
+    (`/wday/cxs/{tenant}/{site}/job/{externalPath}`, same-origin fetch
+    from the content script — the same endpoint the page's own React app
+    calls) for title/company, but `jobId` always comes from parsing the
+    URL slug directly, never from the API. Live-testing on a real
+    Autodesk posting showed the API's id-ish fields hold Workday's
+    internal routing identifier, which is just the full URL slug again
+    — not the short requisition number actually shown on the page — so
+    that field is ignored entirely. The URL-parsing extraction (e.g.
+    `Principal-Software-Engineer_26WD97962-1` → `26WD97962`) has been
+    verified against two real tenants (Autodesk and SHI). Company name
+    isn't in page metadata either way, so it's guessed from the tenant
+    subdomain (`autodesk` → `Autodesk`) when the API doesn't supply
+    one — never treated as high-confidence.
 - Edit anything, then **Save application** →
   `POST {apiBaseUrl}/api/job-applications` with
   `{ company, jobId, jobTitle, jobUrl, createFiles }`.
@@ -128,6 +143,7 @@ manifest.json                  MV3 manifest, permissions
 background.js                  Enables click-to-open side panel behavior
 content-scripts/greenhouse.js  Greenhouse scraper (JSON-LD → DOM → title fallback)
 content-scripts/linkedin.js    LinkedIn scraper (JSON-LD → DOM → title fallback)
+content-scripts/workday.js     Workday scraper (internal JSON API → meta/DOM fallback)
 sidepanel/popup.html           Panel markup: settings + capture form
 sidepanel/popup.css            Styling
 sidepanel/popup.js             Permission handling, scrape request, draft autosave, submit logic
@@ -148,6 +164,14 @@ sidepanel/popup.js             Permission handling, scrape request, draft autosa
   varies by auth state, and changes without notice. Worth testing
   against a few real postings (both logged-in and, if you use it,
   logged-out) before trusting it unattended.
+- Workday's internal JSON API does respond (confirmed live on a real
+  Autodesk posting), but not every field on it should be trusted — its
+  id-ish fields turned out to hold the full URL slug rather than the
+  short requisition number, so `jobId` intentionally ignores the API
+  entirely and relies only on URL parsing, which has held up across two
+  real tenants (Autodesk, SHI). Title/company from the API weren't
+  observed to have the same problem, but that's based on one tenant's
+  live behavior, not a guarantee across all Workday deployments.
 - No duplicate-record link on 409 yet (scope doc mentions "ideally
   linking to the existing record") — right now it just tells you it's a
   duplicate. Can wire that up once the update flow exists to jump to it.

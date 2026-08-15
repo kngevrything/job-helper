@@ -15,7 +15,8 @@
   "permissions": ["storage", "activeTab", "scripting", "tabs", "sidePanel"],
   "host_permissions": [
     "*://*.greenhouse.io/*",
-    "*://*.linkedin.com/*"
+    "*://*.linkedin.com/*",
+    "*://*.myworkdayjobs.com/*"
   ],
   "optional_host_permissions": [
     "http://localhost/*",
@@ -31,6 +32,11 @@
     {
       "matches": ["*://*.linkedin.com/jobs/*"],
       "js": ["content-scripts/linkedin.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["*://*.myworkdayjobs.com/*"],
+      "js": ["content-scripts/workday.js"],
       "run_at": "document_idle"
     }
   ]
