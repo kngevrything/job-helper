@@ -1,3 +1,7 @@
+# Job App Tracker - WIP
+This part of the project is still being developed and the kinks being worked 
+out. 
+
 # Job App Tracker Bridge — Phase 0 (scaffold + Greenhouse + LinkedIn capture)
 
 Status: task 1 (scaffold), task 2's Greenhouse and LinkedIn scrapers, and
