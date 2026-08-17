@@ -1,6 +1,6 @@
 # Job App Tracker - WIP
 This part of the project is still being developed and the kinks being worked 
-out. 
+out. Use of the Chrome Extension is not advised at this point.  
 
 # Job App Tracker Bridge — Phase 0 (scaffold + Greenhouse + LinkedIn capture)
 
