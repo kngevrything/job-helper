@@ -1,4 +1,9 @@
-# Job App Tracker Bridge — Phase 0 (scaffold + Greenhouse + LinkedIn + Workday capture)
+# Job App Tracker - WIP
+
+This part of the project is still being developed and the kinks being worked
+out. Use of the Chrome Extension is not advised at this point.
+
+# Job App Tracker Bridge — Phase 0 (scaffold + Greenhouse + LinkedIn capture)
 
 Status: task 1 (scaffold), task 2's Greenhouse, LinkedIn, and Workday
 scrapers, and the first half of task 3 (capture flow against Mongo)
@@ -66,7 +71,7 @@ Your API's origin isn't fixed (localhost in dev, a homelab hostname
 otherwise), so it can't be hardcoded into `manifest.json`'s
 `host_permissions` at build time. Instead, `manifest.json` declares
 `localhost` and `<all_urls>` as **optional** host permissions, and the
-popup requests permission for the *exact* origin you type in, via
+popup requests permission for the _exact_ origin you type in, via
 `chrome.permissions.request`. Chrome will show a one-time approval
 prompt the first time; after that it's granted until you revoke it in
 `chrome://extensions`.
@@ -136,7 +141,7 @@ one-line change once you know the final hostname.
   whitespace, which is what usually breaks a tab-separated paste into
   Excel.
 
-  **Known rough edge:** this pulls your *entire* application list on
+  **Known rough edge:** this pulls your _entire_ application list on
   every save just to find one record. Fine at ~300 records, but if you
   ever get (or already have) a `GET /api/job-applications/[id]`
   endpoint, that'd be a much cheaper swap — one line change in
