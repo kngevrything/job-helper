@@ -91,6 +91,45 @@ function tryDocumentTitle() {
   return null;
 }
 
+function tryTitleAtPattern() {
+  // job-boards.greenhouse.io -- the newer React-driven layout, distinct
+  // from legacy boards.greenhouse.io -- renders <title> as
+  // "Job Application for {Job Title} at {Company}", with no dash/pipe
+  // separator, so it never matches tryDocumentTitle()'s split above.
+  // Confirmed live on a real job-boards.greenhouse.io posting
+  // (SecurityScorecard/8029601) that this layout also emits no
+  // JobPosting JSON-LD and that the legacy DOM company selectors above
+  // don't match its markup -- tryDomSelectors() there returns a title
+  // via the generic `h1` fallback but leaves company null, and since it
+  // returns non-null it short-circuits past this function entirely in
+  // the || chain below. That's why this is called separately, only to
+  // backfill company, rather than being another link in that chain.
+  const raw = document.title || '';
+  const match = raw.match(/^Job Application for (.+?) at (.+)$/i);
+  if (!match) return null;
+  return { jobTitle: match[1].trim(), company: match[2].trim() };
+}
+
+function extractCompanySlugFromUrl(url) {
+  // Last resort: both legacy (boards.greenhouse.io/{company}/jobs/{id})
+  // and newer (job-boards.greenhouse.io/{company}/jobs/{id}) layouts
+  // put the company token as the first URL path segment. No guarantee
+  // this slug's casing matches the company's real branding (e.g.
+  // "securityscorecard" won't recover "SecurityScorecard") -- only used
+  // when nothing on the page itself named the company.
+  const u = new URL(url);
+  const pathParts = u.pathname.split('/').filter(Boolean);
+  return pathParts.length > 0 ? pathParts[0] : null;
+}
+
+function slugToTitleCase(slug) {
+  return slug
+    .split(/[-_]/)
+    .filter(Boolean)
+    .map((w) => w[0].toUpperCase() + w.slice(1))
+    .join(' ');
+}
+
 function scrapeGreenhouse() {
   const result = tryJsonLd() || tryDomSelectors() || tryDocumentTitle() || {
     jobTitle: null,
@@ -99,15 +138,42 @@ function scrapeGreenhouse() {
     via: 'none',
   };
 
+  let jobTitle = result.jobTitle;
+  let company = result.company;
+  let confidence = result.confidence;
+  let via = result.via;
+
+  if (!company) {
+    const titleAt = tryTitleAtPattern();
+    if (titleAt) {
+      company = titleAt.company;
+      if (!jobTitle) jobTitle = titleAt.jobTitle;
+      via = via === 'none' ? 'document-title-at' : `${via}+document-title-at`;
+      // Page-authored text with real casing, but only confirmed against
+      // one live posting/layout -- never call it "high" on its own.
+      confidence = 'medium';
+    } else {
+      const slug = extractCompanySlugFromUrl(window.location.href);
+      if (slug) {
+        company = slugToTitleCase(slug);
+        via = via === 'none' ? 'url-slug-guess' : `${via}+url-slug-guess`;
+        // A pure casing guess off the URL slug -- least trustworthy
+        // source in this scraper, regardless of how good the title tier
+        // was.
+        confidence = 'low';
+      }
+    }
+  }
+
   return {
     ok: true,
     source: 'greenhouse',
-    jobTitle: result.jobTitle,
-    company: result.company,
+    jobTitle,
+    company,
     jobUrl: window.location.href.split('?')[0].split('#')[0],
     jobId: extractJobIdFromUrl(window.location.href),
-    confidence: result.confidence,
-    scrapedVia: result.via,
+    confidence,
+    scrapedVia: via,
   };
 }
 
