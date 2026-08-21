@@ -117,6 +117,18 @@ button {
   font-size: 12px;
 }
 
+/* Distinct from the scrape-confidence .notice styling on purpose --
+   "this scrape is low-confidence" and "you already applied here" are
+   different situations you'd want to tell apart at a glance. Same
+   palette as .result-message.duplicate below, for visual consistency
+   between the two duplicate-related states. */
+.duplicate-notice {
+  background: #fff3e0;
+  border-color: #ffcc80;
+  color: #663c00;
+  font-weight: 600;
+}
+
 .result-message {
   margin-top: 10px;
   padding: 8px;

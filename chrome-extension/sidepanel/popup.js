@@ -98,6 +98,7 @@ const els = {
   connectionStatus: document.getElementById('connectionStatus'),
   notConnectedNotice: document.getElementById('notConnectedNotice'),
   scrapeNotice: document.getElementById('scrapeNotice'),
+  duplicateNotice: document.getElementById('duplicateNotice'),
   form: document.getElementById('captureForm'),
   jobTitle: document.getElementById('jobTitle'),
   company: document.getElementById('company'),
@@ -200,8 +201,91 @@ async function injectContentScript(tabId, site) {
   }
 }
 
+// ---- Duplicate check ------------------------------------------------
+// Read-only companion to the 409 the API's POST already returns -- this
+// fires right after a scrape (or a restored draft) populates the form,
+// so you see "you've already applied to this" before investing any
+// effort, not just at submit time. It is NOT a substitute for the
+// POST's 409: the gap between this check and a later Save is still
+// real (e.g. the Next.js app open in another tab at the same moment),
+// so Save stays enabled regardless of what this shows -- it's an early
+// warning, not a lock. Fails silently on any network/API error, same
+// as the rest of the capture flow -- a broken dupe check should never
+// block or alarm you about something it couldn't actually verify.
+
+function showDuplicateNotice(data) {
+  const appliedDate = data.createdAt
+    ? new Date(data.createdAt).toLocaleDateString()
+    : null;
+  const statusText = data.endedAt
+    ? `${data.status} (ended ${new Date(data.endedAt).toLocaleDateString()})`
+    : data.status;
+  els.duplicateNotice.textContent = appliedDate
+    ? `Already applied — ${statusText}, applied ${appliedDate}.`
+    : `Already applied — ${statusText}.`;
+  els.duplicateNotice.classList.remove('hidden');
+}
+
+function hideDuplicateNotice() {
+  els.duplicateNotice.classList.add('hidden');
+  els.duplicateNotice.textContent = '';
+}
+
+async function checkDuplicate(company, jobId) {
+  hideDuplicateNotice();
+  if (!company || !jobId) return;
+
+  const apiBaseUrl = await getApiBaseUrl();
+  if (!apiBaseUrl || !(await hasApiPermission(apiBaseUrl))) return;
+
+  try {
+    const url =
+      `${apiBaseUrl}/api/job-applications/check` +
+      `?company=${encodeURIComponent(company)}&jobId=${encodeURIComponent(jobId)}`;
+    const res = await fetch(url);
+    if (!res.ok) return;
+    const payload = await res.json().catch(() => null);
+    if (payload && payload.ok && payload.exists && payload.data) {
+      showDuplicateNotice(payload.data);
+    }
+  } catch (err) {
+    // API unreachable -- say nothing rather than guess.
+  }
+}
+
+// The scrape/draft-restore paths above cover captures that came from a
+// page scrape, but company/jobId can also be typed or fixed by hand (a
+// bad scrape, or a site with no scraper at all) -- so this also
+// re-checks on those two fields directly: on a debounce while typing
+// (longer than the draft-autosave debounce, since this is a network
+// round trip and firing on every keystroke would be wasteful), and
+// immediately on blur so leaving the field doesn't wait out the
+// debounce.
+
+let duplicateCheckTimer = null;
+
+function scheduleDuplicateCheck() {
+  clearTimeout(duplicateCheckTimer);
+  duplicateCheckTimer = setTimeout(() => {
+    checkDuplicate(els.company.value.trim(), els.jobId.value.trim());
+  }, 600);
+}
+
+function duplicateCheckNow() {
+  clearTimeout(duplicateCheckTimer);
+  checkDuplicate(els.company.value.trim(), els.jobId.value.trim());
+}
+
+function attachDuplicateCheckTriggers() {
+  [els.company, els.jobId].forEach((el) => {
+    el.addEventListener('input', scheduleDuplicateCheck);
+    el.addEventListener('blur', duplicateCheckNow);
+  });
+}
+
 async function runScrape() {
   els.scrapeNotice.classList.add('hidden');
+  hideDuplicateNotice();
   const tab = await getSourceTab();
   if (!tab || !tab.url) {
     showScrapeNotice('No active tab detected — enter details manually.', true);
@@ -255,6 +339,7 @@ async function runScrape() {
 
   populateForm(response);
   await saveDraft();
+  await checkDuplicate(response.company, response.jobId);
   if (response.confidence === 'high') {
     showScrapeNotice('Captured from page structured data.', false);
   } else {
@@ -457,6 +542,7 @@ els.form.addEventListener('submit', async (e) => {
         els.form.reset();
         els.jobId.value = '';
         els.createFiles.checked = true;
+        hideDuplicateNotice();
       }
     } else {
       const text = await res.text().catch(() => '');
@@ -529,6 +615,7 @@ function attachAutoRescan() {
   if (hasDraftContent) {
     populateForm(draft);
     els.createFiles.checked = draft.createFiles !== false;
+    await checkDuplicate(draft.company, draft.jobId);
     showScrapeNotice(
       'Restored your unsaved draft. Click "Rescan page" to pull fresh data instead, or "Clear" to start over.',
       true
@@ -539,4 +626,5 @@ function attachAutoRescan() {
 
   attachDraftAutosave();
   attachAutoRescan();
+  attachDuplicateCheckTriggers();
 })();
