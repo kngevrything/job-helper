@@ -2,7 +2,7 @@
 // default anchored extension window (which closes the instant it loses
 // focus) or a detached window (which stays open but is easy to lose
 // behind other windows). setPanelBehavior({ openPanelOnActionClick: true })
-// makes clicking the toolbar icon open/focus the panel directly — per
+// makes clicking the toolbar icon open/focus the panel directly. Per
 // Chrome's docs, you should NOT also add an action.onClicked listener
 // when this is enabled, since the side panel API handles the click
 // itself.

@@ -169,7 +169,7 @@ async function getSourceTab() {
   // Side panel pages (unlike a detached secondary window) have an accurate
   // "current window" context matching the browser window they're docked
   // to, so a plain currentWindow query correctly finds the tab you're
-  // looking at — even after switching tabs while the panel stays open.
+  // looking at, even after switching tabs while the panel stays open.
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   return tab || null;
 }
@@ -221,8 +221,8 @@ function showDuplicateNotice(data) {
     ? `${data.status} (ended ${new Date(data.endedAt).toLocaleDateString()})`
     : data.status;
   els.duplicateNotice.textContent = appliedDate
-    ? `Already applied — ${statusText}, applied ${appliedDate}.`
-    : `Already applied — ${statusText}.`;
+    ? `Already applied: ${statusText}, applied ${appliedDate}.`
+    : `Already applied: ${statusText}.`;
   els.duplicateNotice.classList.remove('hidden');
 }
 
@@ -288,14 +288,14 @@ async function runScrape() {
   hideDuplicateNotice();
   const tab = await getSourceTab();
   if (!tab || !tab.url) {
-    showScrapeNotice('No active tab detected — enter details manually.', true);
+    showScrapeNotice('No active tab detected. Enter details manually.', true);
     return;
   }
 
   const site = detectSite(tab.url);
   if (!site) {
     showScrapeNotice(
-      'No scraper for this site yet (Greenhouse, LinkedIn, Workday, Lever so far) — enter details manually.',
+      'No scraper for this site yet (Greenhouse, LinkedIn, Workday, Lever so far). Enter details manually.',
       true
     );
     await populateForm({});
@@ -333,7 +333,7 @@ async function runScrape() {
   }
 
   if (!response || !response.ok) {
-    showScrapeNotice('Scrape failed on this page — enter details manually.', true);
+    showScrapeNotice('Scrape failed on this page. Enter details manually.', true);
     return;
   }
 
@@ -344,7 +344,7 @@ async function runScrape() {
     showScrapeNotice('Captured from page structured data.', false);
   } else {
     showScrapeNotice(
-      'Captured from page — unverified, please confirm before saving.',
+      'Captured from page: unverified, please confirm before saving.',
       true
     );
   }
@@ -467,7 +467,7 @@ els.form.addEventListener('submit', async (e) => {
 
   const apiBaseUrl = await getApiBaseUrl();
   if (!apiBaseUrl || !(await hasApiPermission(apiBaseUrl))) {
-    showResult('Not connected to an API — set it up in settings (⚙) first.', 'error');
+    showResult('Not connected to an API. Set it up in settings (⚙) first.', 'error');
     return;
   }
 
@@ -492,7 +492,7 @@ els.form.addEventListener('submit', async (e) => {
 
     if (res.status === 409) {
       showResult(
-        `Already applied to ${body.company} / ${body.jobTitle || 'this role'} — this looks like a duplicate.`,
+        `Already applied to ${body.company} / ${body.jobTitle || 'this role'}. This looks like a duplicate.`,
         'duplicate'
       );
     } else if (res.ok) {
@@ -504,7 +504,7 @@ els.form.addEventListener('submit', async (e) => {
         const createdId = created._id || created.id;
         if (!createdId) {
           showResult(
-            'Saved — but the response had no id to look the record back up by, so I can\'t fetch excelRowText/starterPromptText.',
+            'Saved, but the response had no id to look the record back up by, so I can\'t fetch excelRowText/starterPromptText.',
             'error'
           );
           hideOutputs();
@@ -519,7 +519,7 @@ els.form.addEventListener('submit', async (e) => {
               showOutputs(fullRecord.excelRowText, fullRecord.starterPromptText);
             } else {
               showResult(
-                'Saved — but excelRowText/starterPromptText weren\'t on the record when I looked it back up. Might need a moment to generate, or come from somewhere else.',
+                'Saved, but excelRowText/starterPromptText weren\'t on the record when I looked it back up. Might need a moment to generate, or come from somewhere else.',
                 'error'
               );
               hideOutputs();
@@ -550,7 +550,7 @@ els.form.addEventListener('submit', async (e) => {
     }
   } catch (err) {
     showResult(
-      `Could not reach the Mongo API at ${apiBaseUrl} — is the server running?`,
+      `Could not reach the Mongo API at ${apiBaseUrl}. Is the server running?`,
       'error'
     );
   } finally {
@@ -598,7 +598,7 @@ function attachAutoRescan() {
     if (connected) {
       els.connectionStatus.textContent = `Connected to ${apiBaseUrl}`;
     } else {
-      els.connectionStatus.textContent = 'Saved, but permission not granted — click Connect.';
+      els.connectionStatus.textContent = 'Saved, but permission not granted. Click Connect.';
       els.notConnectedNotice.classList.remove('hidden');
       els.settingsPanel.classList.remove('hidden');
     }
