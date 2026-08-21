@@ -5,11 +5,11 @@ out. Use of the Chrome Extension is not advised at this point.
 
 # Job App Tracker Bridge — Phase 0 (scaffold + Greenhouse + LinkedIn capture)
 
-Status: task 1 (scaffold), task 2's Greenhouse, LinkedIn, and Workday
-scrapers, and the first half of task 3 (capture flow against Mongo)
-from `phase-0-scope.md`. Update flow, Indeed, the generic fallback, and
-client-side excelRowText/starterPromptText regeneration aren't built —
-this proves capture end-to-end first.
+Status: task 1 (scaffold), task 2's Greenhouse, LinkedIn, Workday, and
+Lever scrapers, and the first half of task 3 (capture flow against
+Mongo) from `phase-0-scope.md`. Update flow, Indeed, the generic
+fallback, and client-side excelRowText/starterPromptText regeneration
+aren't built — this proves capture end-to-end first.
 
 ## Load it
 
@@ -84,9 +84,9 @@ one-line change once you know the final hostname.
 
 ## What works right now
 
-- Open a Greenhouse, LinkedIn, or Workday-hosted (`*.myworkdayjobs.com`
-  — Autodesk and many other large employers) job posting. Content
-  scripts run automatically on all three.
+- Open a Greenhouse, LinkedIn, Workday-hosted (`*.myworkdayjobs.com`
+  — Autodesk and many other large employers), or Lever (`jobs.lever.co`)
+  job posting. Content scripts run automatically on all four.
 - Click the extension icon (opens the side panel) — it scrapes
   `jobTitle`, `company`, `jobUrl`, `jobId` from the page and pre-fills
   the form. Low-confidence scrapes are flagged "unverified — please
@@ -117,6 +117,16 @@ one-line change once you know the final hostname.
     isn't in page metadata either way, so it's guessed from the tenant
     subdomain (`autodesk` → `Autodesk`) when the API doesn't supply
     one — never treated as high-confidence.
+  - **Lever:** `company` and posting id come directly from the URL path
+    (`jobs.lever.co/{company}/{postingId}`) — the posting id is an
+    opaque UUID used as-is, no parsing needed. For the human-readable
+    company name, prefers JSON-LD (if present, unverified) or
+    `og:title` — Lever's format is `"{Company} - {Job Title}"`, company
+    **first**, the opposite order from Greenhouse/LinkedIn — falling
+    back to `document.title`, and only guessing from the URL slug
+    (never above medium-confidence) if none of those produced a name.
+    Verified against one real Lever posting, same single-sample caveat
+    as the other non-Greenhouse scrapers.
 - Edit anything, then **Save application** →
   `POST {apiBaseUrl}/api/job-applications` with
   `{ company, jobId, jobTitle, jobUrl, createFiles }`.
@@ -150,7 +160,8 @@ one-line change once you know the final hostname.
 ## What's deliberately not built yet
 
 - Update flow (recent list, search, status/notes `PATCH`) — task 4.
-- Indeed scraper and the generic fallback — rest of task 2.
+- Indeed scraper and the generic fallback — rest of task 2. (Lever is
+  now built — see "What works right now" above.)
 - The `excelRowText`/`starterPromptText` regeneration + copy buttons
   originally scoped as client-side — currently these come from a
   post-add lookup against your API instead (see below), not client-side
@@ -165,6 +176,7 @@ background.js                  Enables click-to-open side panel behavior
 content-scripts/greenhouse.js  Greenhouse scraper (JSON-LD → DOM → title fallback)
 content-scripts/linkedin.js    LinkedIn scraper (JSON-LD → DOM → title fallback)
 content-scripts/workday.js     Workday scraper (internal JSON API → meta/DOM fallback)
+content-scripts/lever.js       Lever scraper (URL path for id/company → JSON-LD/og:title for names)
 sidepanel/popup.html           Panel markup: settings + capture form
 sidepanel/popup.css            Styling
 sidepanel/popup.js             Permission handling, scrape request, draft autosave, submit logic
@@ -196,3 +208,8 @@ sidepanel/popup.js             Permission handling, scrape request, draft autosa
 - No duplicate-record link on 409 yet (scope doc mentions "ideally
   linking to the existing record") — right now it just tells you it's a
   duplicate. Can wire that up once the update flow exists to jump to it.
+- Lever's JSON-LD tier is untested — I haven't confirmed a real Lever
+  posting that actually emits a `JobPosting` schema block, unlike
+  Greenhouse/LinkedIn where that's been observed directly. The
+  `og:title` tier is the one that's actually been verified live, and
+  only against a single posting/tenant.

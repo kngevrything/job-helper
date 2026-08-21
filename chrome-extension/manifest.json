@@ -16,7 +16,8 @@
   "host_permissions": [
     "*://*.greenhouse.io/*",
     "*://*.linkedin.com/*",
-    "*://*.myworkdayjobs.com/*"
+    "*://*.myworkdayjobs.com/*",
+    "*://jobs.lever.co/*"
   ],
   "optional_host_permissions": [
     "http://localhost/*",
@@ -37,6 +38,11 @@
     {
       "matches": ["*://*.myworkdayjobs.com/*"],
       "js": ["content-scripts/workday.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["*://jobs.lever.co/*"],
+      "js": ["content-scripts/lever.js"],
       "run_at": "document_idle"
     }
   ]
