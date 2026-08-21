@@ -19,7 +19,7 @@ If you don't have MongoDB installed, [MongoDB Community Server](https://www.mong
 1. Clone the repo and install dependencies:
 
    ```bash
-   git clone <repo-url>
+   git clone https://github.com/kngevrything/job-helper.git
    cd job-tracker
    npm install
    ```
@@ -55,7 +55,7 @@ Requires Docker and Docker Compose. No MongoDB setup needed if you use the bundl
 1. Clone the repo:
 
    ```bash
-   git clone <repo-url>
+   git clone https://github.com/kngevrything/job-helper.git
    cd job-tracker
    ```
 

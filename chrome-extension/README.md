@@ -25,7 +25,7 @@ step 5 below.
 1. Clone this repo, if you haven't already:
 
    ```bash
-   git clone <repo-url>
+   git clone https://github.com/kngevrything/job-helper.git
    ```
 
 2. Go to `chrome://extensions` in Chrome.

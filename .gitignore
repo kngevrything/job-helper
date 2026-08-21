@@ -3,3 +3,5 @@ job-tracker/import.csv
 job-tracker/start_job_tracker.bat
 start_job_tracker.bat - Shortcut.lnk
 job-tracker/seed-demo.js
+
+scratch/
