@@ -166,7 +166,7 @@ function populateForm(scraped) {
 }
 
 async function getSourceTab() {
-  // Side panel pages (unlike a detached popup window) have an accurate
+  // Side panel pages (unlike a detached secondary window) have an accurate
   // "current window" context matching the browser window they're docked
   // to, so a plain currentWindow query correctly finds the tab you're
   // looking at — even after switching tabs while the panel stays open.

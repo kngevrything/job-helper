@@ -1,15 +1,14 @@
-# Job App Tracker - WIP
+# Job App Tracker Bridge
 
-This part of the project is still being developed and the kinks being worked
-out. Use of the Chrome Extension is not advised at this point.
+This part of the project is still being developed and the kinks are
+being worked out. Use of the Chrome Extension is not advised at this
+point.
 
-# Job App Tracker Bridge — Phase 0 (scaffold + Greenhouse + LinkedIn capture)
-
-Status: task 1 (scaffold), task 2's Greenhouse, LinkedIn, Workday, and
-Lever scrapers, and the first half of task 3 (capture flow against
-Mongo) from `phase-0-scope.md`. Update flow, Indeed, the generic
-fallback, and client-side excelRowText/starterPromptText regeneration
-aren't built — this proves capture end-to-end first.
+Captures job applications from Greenhouse, LinkedIn, Workday, and
+Lever job postings and writes them into your `job-tracker` app. The
+update flow, an Indeed scraper, a generic fallback scraper, and
+client-side excelRowText/starterPromptText regeneration aren't built
+yet — this proves capture end-to-end first.
 
 ## Install / set up
 
@@ -38,7 +37,7 @@ step 5 below.
 5. Click the extension's icon in the toolbar to open it — if you don't
    see it there, click the puzzle-piece icon and pin it so it's easy to
    find later. This opens Chrome's **side panel**, docked to the browser
-   window rather than a popup (see below for why). Open settings (⚙),
+   window rather than appearing as a temporary dropdown (see below for why). Open settings (⚙),
    enter your `job-tracker` app's base URL from the prerequisite above,
    and click **Connect**. Chrome will prompt you to approve access to
    that exact origin the first time — that's expected, see "Why
@@ -50,10 +49,10 @@ step 5 below.
    "What works right now" below for which sites are supported and what
    each scraper actually does.
 
-## Why the side panel instead of a popup or a standalone window
+## Why the side panel instead of an anchored dropdown or a standalone window
 
-Anchored browser-action popups close the instant they lose focus — a
-hard Chrome platform behavior. A detached `chrome.windows.create` window
+Chrome's default anchored extension window closes the instant it loses
+focus — a hard platform behavior. A detached `chrome.windows.create` window
 fixes that, but introduces a different problem: it's just another
 window, easy to lose behind your job-search tabs and everything else
 open.
@@ -218,14 +217,14 @@ one-line change once you know the final hostname.
 
 ## What's deliberately not built yet
 
-- Update flow (recent list, search, status/notes `PATCH`) — task 4.
-- Indeed scraper and the generic fallback — rest of task 2. (Lever is
-  now built — see "What works right now" above.)
+- Update flow (recent list, search, status/notes `PATCH`).
+- Indeed scraper and the generic fallback.
 - The `excelRowText`/`starterPromptText` regeneration + copy buttons
   originally scoped as client-side — currently these come from a
   post-add lookup against your API instead (see below), not client-side
   template logic, since I don't have `generateOutputs.ts` to port.
-- Notion spike — task 6, separate and parallel per the scope doc.
+- Notion as an alternative backend — planned as a separate, parallel
+  effort; not started.
 
 ## Files
 
@@ -272,9 +271,9 @@ sidepanel/panel.js             Permission handling, scrape request, draft autosa
   real tenants (Autodesk, SHI). Title/company from the API weren't
   observed to have the same problem, but that's based on one tenant's
   live behavior, not a guarantee across all Workday deployments.
-- No duplicate-record link on 409 yet (scope doc mentions "ideally
-  linking to the existing record") — right now it just tells you it's a
-  duplicate. Can wire that up once the update flow exists to jump to it.
+- No duplicate-record link on 409 yet — right now it just tells you
+  it's a duplicate, ideally this would link to the existing record.
+  Can wire that up once the update flow exists to jump to it.
 - Lever's JSON-LD tier is untested — I haven't confirmed a real Lever
   posting that actually emits a `JobPosting` schema block, unlike
   Greenhouse/LinkedIn where that's been observed directly. The
