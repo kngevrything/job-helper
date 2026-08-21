@@ -11,14 +11,44 @@ Mongo) from `phase-0-scope.md`. Update flow, Indeed, the generic
 fallback, and client-side excelRowText/starterPromptText regeneration
 aren't built — this proves capture end-to-end first.
 
-## Load it
+## Install / set up
 
-1. `chrome://extensions` → enable Developer mode → **Load unpacked** →
-   select this folder. Requires Chrome 114+ (side panel API).
-2. Click the extension icon — this opens Chrome's **side panel**, docked
-   to the browser window. Open settings (⚙), enter your Next.js app's
-   base URL (e.g. `http://localhost:3000` or your homelab hostname), and
-   click **Connect**.
+This extension is a **bridge**, not a standalone app — it scrapes job
+postings and writes them into the `job-tracker` Next.js/Mongo app that
+lives elsewhere in this same repo. It has nothing to save to until that
+app is running and reachable, so set that up first if you haven't:
+see [`job-tracker/README.md`](../job-tracker/README.md) (native or
+Docker, both covered there). Note the URL it ends up reachable at —
+`http://localhost:3000` for a local dev server, or a homelab
+hostname/port if you're hosting it elsewhere — you'll enter that in
+step 5 below.
+
+1. Clone this repo, if you haven't already:
+
+   ```bash
+   git clone <repo-url>
+   ```
+
+2. Go to `chrome://extensions` in Chrome.
+3. Enable **Developer mode** (toggle, top right).
+4. Click **Load unpacked** and select the `chrome-extension/` folder
+   specifically — not the repo root. (The repo root has no
+   `manifest.json`; Chrome will reject it if you pick the wrong
+   folder.) Requires Chrome 114+ (side panel API).
+5. Click the extension's icon in the toolbar to open it — if you don't
+   see it there, click the puzzle-piece icon and pin it so it's easy to
+   find later. This opens Chrome's **side panel**, docked to the browser
+   window rather than a popup (see below for why). Open settings (⚙),
+   enter your `job-tracker` app's base URL from the prerequisite above,
+   and click **Connect**. Chrome will prompt you to approve access to
+   that exact origin the first time — that's expected, see "Why
+   'Connect' instead of it just working" below for why the origin isn't
+   just hardcoded.
+6. Open a Greenhouse, LinkedIn, Workday, or Lever job posting and click
+   the extension icon (or switch to a tab that already has one open) —
+   it should auto-scrape and pre-fill the form. If it doesn't, see
+   "What works right now" below for which sites are supported and what
+   each scraper actually does.
 
 ## Why the side panel instead of a popup or a standalone window
 
@@ -71,7 +101,7 @@ Your API's origin isn't fixed (localhost in dev, a homelab hostname
 otherwise), so it can't be hardcoded into `manifest.json`'s
 `host_permissions` at build time. Instead, `manifest.json` declares
 `localhost` and `<all_urls>` as **optional** host permissions, and the
-popup requests permission for the _exact_ origin you type in, via
+panel requests permission for the _exact_ origin you type in, via
 `chrome.permissions.request`. Chrome will show a one-time approval
 prompt the first time; after that it's granted until you revoke it in
 `chrome://extensions`.
@@ -206,9 +236,9 @@ content-scripts/greenhouse.js  Greenhouse scraper (JSON-LD → DOM → title fal
 content-scripts/linkedin.js    LinkedIn scraper (JSON-LD → DOM → title fallback)
 content-scripts/workday.js     Workday scraper (internal JSON API → meta/DOM fallback)
 content-scripts/lever.js       Lever scraper (URL path for id/company → JSON-LD/og:title for names)
-sidepanel/popup.html           Panel markup: settings + capture form
-sidepanel/popup.css            Styling
-sidepanel/popup.js             Permission handling, scrape request, draft autosave, submit logic
+sidepanel/panel.html           Panel markup: settings + capture form
+sidepanel/panel.css            Styling
+sidepanel/panel.js             Permission handling, scrape request, draft autosave, submit logic
 ```
 
 ## Known rough edges worth knowing about before you build on top of this

@@ -7,7 +7,7 @@
     "default_title": "Job App Tracker"
   },
   "side_panel": {
-    "default_path": "sidepanel/popup.html"
+    "default_path": "sidepanel/panel.html"
   },
   "background": {
     "service_worker": "background.js"
