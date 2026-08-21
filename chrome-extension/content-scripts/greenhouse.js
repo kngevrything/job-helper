@@ -7,8 +7,41 @@
 // source. DOM selectors are a fallback for boards that don't emit it.
 
 function extractJobIdFromUrl(url) {
-  const match = url.match(/\/jobs\/(\d+)/);
-  return match ? match[1] : null;
+  const pathMatch = url.match(/\/jobs\/(\d+)/);
+  if (pathMatch) return pathMatch[1];
+  // Greenhouse's embedded application-form URLs
+  // (job-boards.greenhouse.io/embed/job_app?for={company}&token={id})
+  // carry the job id in a "token" query param instead of the URL path.
+  // Confirmed live against a real Speechify embed link.
+  try {
+    const token = new URL(url).searchParams.get('token');
+    if (token && /^\d+$/.test(token)) return token;
+  } catch (e) {
+    // malformed URL, nothing to extract
+  }
+  return null;
+}
+
+function canonicalizeEmbedUrl(url) {
+  // The embed form URL itself isn't a useful saved link: stripping its
+  // query string (as the normal jobUrl logic does below) throws away
+  // the "for"/"token" params that are the only thing identifying the
+  // posting, leaving a dead ".../embed/job_app" link. When both are
+  // present, reconstruct the canonical non-embed posting URL instead.
+  // Confirmed live against a real Speechify embed link; only handles
+  // job-boards.greenhouse.io, the one host this shape has been observed on.
+  let parsed;
+  try {
+    parsed = new URL(url);
+  } catch (e) {
+    return null;
+  }
+  if (parsed.hostname !== 'job-boards.greenhouse.io') return null;
+  if (!parsed.pathname.startsWith('/embed/job_app')) return null;
+  const company = parsed.searchParams.get('for');
+  const token = parsed.searchParams.get('token');
+  if (!company || !token || !/^\d+$/.test(token)) return null;
+  return `https://job-boards.greenhouse.io/${company}/jobs/${token}`;
 }
 
 function tryJsonLd() {
@@ -63,7 +96,11 @@ function tryDomSelectors() {
     const el = document.querySelector(sel);
     if (!el) continue;
     if (el.tagName === 'IMG' && el.alt && el.alt.trim()) {
-      company = el.alt.trim();
+      // Company logo <img> alt text is commonly authored as "{Company}
+      // Logo" (confirmed live on Speechify's job-boards.greenhouse.io
+      // posting: alt="Speechify Logo"), so strip a trailing "Logo" word
+      // rather than using the raw alt text as the company name.
+      company = el.alt.trim().replace(/\s+logo$/i, '').trim();
       break;
     }
     if (el.textContent && el.textContent.trim()) {
@@ -165,12 +202,16 @@ function scrapeGreenhouse() {
     }
   }
 
+  const jobUrl =
+    canonicalizeEmbedUrl(window.location.href) ||
+    window.location.href.split('?')[0].split('#')[0];
+
   return {
     ok: true,
     source: 'greenhouse',
     jobTitle,
     company,
-    jobUrl: window.location.href.split('?')[0].split('#')[0],
+    jobUrl,
     jobId: extractJobIdFromUrl(window.location.href),
     confidence,
     scrapedVia: via,
