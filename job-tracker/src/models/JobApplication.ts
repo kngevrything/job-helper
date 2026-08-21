@@ -63,7 +63,31 @@ const JobApplicationSchema = new Schema(
   }
 );
 
-JobApplicationSchema.index({ company: 1, jobId: 1 }, { unique: true });
+// strength: 2 = case-insensitive (still accent-sensitive) comparison,
+// per MongoDB's ICU collation levels. Without this, "SecurityScorecard"
+// and "Securityscorecard" compare as different values -- both to this
+// unique index (letting an actual duplicate document slip in with
+// different casing) and to any query that doesn't separately specify
+// the same collation. Exported so both the POST route's pre-check and
+// the GET check route use the exact same comparison rules the index
+// itself enforces -- if those ever drifted apart, "is this a duplicate"
+// could disagree between what the index allows and what a query finds.
+//
+// IMPORTANT: changing an existing index's options (as this did, from no
+// collation to this one) is not something Mongoose/MongoDB will do for
+// you automatically on a running database -- the old index has to be
+// dropped and this one created in its place, and MongoDB will refuse to
+// build a case-insensitive unique index at all if casing-variant
+// duplicates already exist under the old index. See
+// scripts/migrateCaseInsensitiveDupeIndex.js, which has to be run once,
+// by hand, against the real database -- this schema change alone does
+// nothing to an already-running MongoDB instance.
+export const DUPLICATE_MATCH_COLLATION = { locale: "en", strength: 2 } as const;
+
+JobApplicationSchema.index(
+  { company: 1, jobId: 1 },
+  { unique: true, collation: DUPLICATE_MATCH_COLLATION }
+);
 
 export type JobApplicationDocument = InferSchemaType<typeof JobApplicationSchema>;
 

@@ -92,7 +92,19 @@ one-line change once you know the final hostname.
   the form. Low-confidence scrapes are flagged "unverified — please
   confirm."
   - **Greenhouse:** prefers the page's JSON-LD `JobPosting` schema,
-    falls back to DOM selectors, then `document.title` parsing.
+    falls back to DOM selectors, then `document.title` parsing. Confirmed
+    live that `job-boards.greenhouse.io` (the newer React layout,
+    distinct from legacy `boards.greenhouse.io`) emits no JSON-LD and
+    doesn't match the legacy DOM company selectors — its `h1` still
+    yields a job title via the generic DOM fallback, but company comes
+    back empty from all three main tiers. Two more sources kick in
+    specifically to backfill company when that happens:
+    `"Job Application for {Title} at {Company}"` — this layout's actual
+    `<title>` format, no dash/pipe separator so it doesn't match the
+    dash-split parsing above — and, as a last resort, the company slug
+    already present in every Greenhouse job URL
+    (`{boards,job-boards}.greenhouse.io/{company}/jobs/{id}`), title-cased
+    as a guess with no claim its casing matches the real branding.
   - **LinkedIn:** same fallback order, but the DOM selectors here are on
     much shakier ground — LinkedIn's markup is unstable, differs
     between logged-in and public views, and changes without notice.
@@ -132,6 +144,23 @@ one-line change once you know the final hostname.
   `{ company, jobId, jobTitle, jobUrl, createFiles }`.
 - A 409 response is surfaced as a clear "already applied" message
   instead of a generic error.
+- **Duplicate warning on scrape, not just on submit:** right after a
+  scrape (or a restored draft) populates the form, the panel calls
+  `GET {apiBaseUrl}/api/job-applications/check?company=&jobId=` — a
+  read-only sibling of the POST route's own `{ company, jobId }`
+  duplicate check — and shows "Already applied — STATUS, applied
+  &lt;date&gt;" if it finds a match, before you've invested any effort
+  filling out the rest of the form. This is an early warning only, not
+  a lock — Save stays enabled regardless, and the POST's 409 (backed by
+  the real unique index) stays the authoritative last word, since the
+  check-then-act gap between this GET and a later Save is real (e.g.
+  the Next.js app open in another tab at the same time). Fails silently
+  on any network/API error, same as the rest of the capture flow. The
+  same check also re-fires on manual edits to the Company/Job ID
+  fields — not just on scrape — so fixing a bad scrape or typing in a
+  capture by hand (a site with no scraper) still gets flagged: a
+  600ms debounce while you're actively typing, and immediately on blur
+  so tabbing out of the field doesn't wait out the debounce.
 - If the API is unreachable (e.g. homelab server down), you get an
   explicit "could not reach the Mongo API" message rather than a
   silent failure.
@@ -191,6 +220,14 @@ sidepanel/popup.js             Permission handling, scrape request, draft autosa
 - The Greenhouse company-name DOM fallback guesses at a few common
   layouts; I haven't been able to verify these against a live page from
   here. The JSON-LD path is much more trustworthy when present.
+- Confirmed live (SecurityScorecard posting on `job-boards.greenhouse.io`)
+  that this newer layout emits no JSON-LD and misses the legacy DOM
+  company selectors, which is what the `"... at {Company}"` title-parse
+  and URL-slug-guess fallbacks above exist for — but only that one
+  posting has actually been checked. If `job-boards.greenhouse.io`'s
+  title format varies by tenant, or a tenant's slug doesn't resemble
+  their real name at all, this will still come back with a guess you
+  need to double check, not an empty field.
 - LinkedIn's DOM selectors are on genuinely unstable ground — I'm
   fairly confident about the URL/id parsing, much less confident about
   the class-name selectors, since LinkedIn's markup is obfuscated,

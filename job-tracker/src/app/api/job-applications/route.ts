@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/db/mongoose";
-import { JobApplication } from "@/models/JobApplication";
+import { JobApplication, DUPLICATE_MATCH_COLLATION } from "@/models/JobApplication";
 import { jobApplicationInputSchema } from "@/lib/validation/jobApplication";
 import { generateOutputs } from "@/lib/prompts/generateOutputs";
 import { createApplicationFolder } from "@/lib/files/createApplicationFolder";
@@ -58,10 +58,14 @@ export async function POST(req: Request) {
 
     await connectToDatabase();
 
+    // Same collation as the unique index itself (see JobApplication.ts)
+    // so this pre-check never disagrees with what the index will
+    // actually allow -- "SecurityScorecard" and "Securityscorecard"
+    // count as the same company here, same as at the index level.
     const existing = await JobApplication.findOne({
       company: input.company,
       jobId: input.jobId,
-    });
+    }).collation(DUPLICATE_MATCH_COLLATION);
 
     if (existing) {
       return NextResponse.json(

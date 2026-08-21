@@ -9,6 +9,7 @@
     "lint": "eslint",
     "import": "node scripts/importCsv.js",
     "backfill-ended-at": "node scripts/backfillEndedAt.js",
+    "migrate-case-insensitive-dupe-index": "node scripts/migrateCaseInsensitiveDupeIndex.js",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "node scripts/run-e2e.mjs",
