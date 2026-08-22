@@ -283,6 +283,12 @@ function attachDuplicateCheckTriggers() {
   });
 }
 
+function fillUrlIfEmpty(url) {
+  if (!url) return;
+  if (els.jobUrl.value.trim()) return;
+  els.jobUrl.value = url;
+}
+
 async function runScrape() {
   els.scrapeNotice.classList.add('hidden');
   hideDuplicateNotice();
@@ -295,10 +301,11 @@ async function runScrape() {
   const site = detectSite(tab.url);
   if (!site) {
     showScrapeNotice(
-      'No scraper for this site yet (Greenhouse, LinkedIn, Workday, Lever so far). Enter details manually.',
+      'No scraper for this site yet (Greenhouse, LinkedIn, Workday, Lever so far). URL filled in, enter the rest manually.',
       true
     );
-    await populateForm({});
+    fillUrlIfEmpty(tab.url);
+    await saveDraft();
     return;
   }
 
@@ -326,14 +333,18 @@ async function runScrape() {
 
   if (!reachable) {
     showScrapeNotice(
-      'Page loaded before extension, reload page or enter details manually.',
+      'Page loaded before extension, reload page or enter details manually. URL filled in below.',
       true
     );
+    fillUrlIfEmpty(tab.url);
+    await saveDraft();
     return;
   }
 
   if (!response || !response.ok) {
-    showScrapeNotice('Scrape failed on this page. Enter details manually.', true);
+    showScrapeNotice('Scrape failed on this page. URL filled in, enter the rest manually.', true);
+    fillUrlIfEmpty(tab.url);
+    await saveDraft();
     return;
   }
 
