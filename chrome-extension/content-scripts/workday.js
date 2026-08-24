@@ -3,8 +3,8 @@
 // (CxS) career site platform, not just Autodesk specifically.
 //
 // jobId comes exclusively from the URL slug (extractRequisitionId),
-// verified against two real tenants (SHI, Autodesk). It deliberately
-// does NOT use anything from the Workday internal JSON API below --
+// verified against three real tenants (SHI, Autodesk, Yahoo). It
+// deliberately does NOT use anything from the Workday internal JSON API below --
 // live-testing on a real Autodesk posting showed the API's id-ish
 // fields (jobPostingId etc.) hold Workday's internal routing
 // identifier, which turned out to just be the full URL slug again, not
@@ -39,10 +39,19 @@ function parseWorkdayUrl(href) {
   const tenant = hostMatch[1];
   const wdServer = hostMatch[2];
 
-  // Path is typically /{locale}/{site}/details/{externalPath} but the
-  // locale prefix is optional depending on tenant config, so find "site"
-  // and "externalPath" relative to the details/job segment instead of
-  // assuming a fixed position.
+  // Path is typically /{locale}/{site}/details/{externalPath}, but the
+  // locale prefix is optional depending on tenant config, and some
+  // tenants (confirmed live: Yahoo, "ouryahoo.wd5.myworkdayjobs.com")
+  // insert an extra location segment between "job"/"details" and the
+  // real slug, e.g.
+  // /en-US/careers/job/United-States-of-America/Senior-...-Tools_JR0027211
+  // -- taking the segment immediately after "job"/"details" would grab
+  // "United-States-of-America" instead of the actual externalPath there.
+  // Workday's CxS API convention (and Autodesk/SHI, confirmed earlier)
+  // always has the real slug as the LAST path segment regardless of how
+  // many segments come before it, so anchor "site" off "job"/"details"
+  // but take externalPath from the end of the path instead of a fixed
+  // offset from the anchor.
   const pathParts = u.pathname.split('/').filter(Boolean);
   const anchorIdx = pathParts.findIndex((p) => p === 'details' || p === 'job');
   if (anchorIdx < 1 || anchorIdx + 1 >= pathParts.length) return null;
@@ -51,7 +60,7 @@ function parseWorkdayUrl(href) {
     tenant,
     wdServer,
     site: pathParts[anchorIdx - 1],
-    externalPath: pathParts[anchorIdx + 1],
+    externalPath: pathParts[pathParts.length - 1],
   };
 }
 

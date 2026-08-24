@@ -134,17 +134,28 @@ identifier, which is just the full URL slug again, not the short
 requisition number actually shown on the page, so that field is
 ignored entirely. The URL-parsing extraction (e.g.
 `Principal-Software-Engineer_26WD97962-1` -> `26WD97962`) has been
-verified against two real tenants (Autodesk and SHI). Company name
-isn't in page metadata either way, so it's guessed from the tenant
+verified against three real tenants (Autodesk, SHI, and Yahoo). Company
+name isn't in page metadata either way, so it's guessed from the tenant
 subdomain (`autodesk` -> `Autodesk`) when the API doesn't supply one,
 never treated as high-confidence.
 
-The internal JSON API does respond (confirmed live on a real Autodesk
-posting), but not every field on it should be trusted, as above. The
-URL-parsing extraction has held up across two real tenants (Autodesk,
-SHI); title/company from the API weren't observed to have the same
-problem, but that's based on one tenant's live behavior, not a
-guarantee across all Workday deployments.
+`externalPath` (the slug used in the API call and in requisition-id
+parsing) is taken from the last segment of the URL path, not a fixed
+offset from the `job`/`details` anchor segment. Confirmed live on a
+real Yahoo posting (`ouryahoo.wd5.myworkdayjobs.com`) that some tenants
+insert an extra location segment between `job` and the real slug
+(`/en-US/careers/job/United-States-of-America/Senior-...-Tools_JR0027211`),
+which would have been misparsed as the externalPath if the code assumed
+the slug always comes immediately after `job`/`details`. Taking the
+last path segment instead works for both that shape and the simpler
+Autodesk/SHI shape, where the slug was already the last segment.
+
+The internal JSON API does respond (confirmed live on real Autodesk and
+Yahoo postings), but not every field on it should be trusted, as above.
+The URL-parsing extraction has held up across three real tenants
+(Autodesk, SHI, Yahoo); title/company from the API weren't observed to
+have the same problem, but that's based on a handful of tenants' live
+behavior, not a guarantee across all Workday deployments.
 
 ### Lever
 
