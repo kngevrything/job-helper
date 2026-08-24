@@ -59,9 +59,14 @@ export default function MainClient() {
 
   const [creatingDoc, setCreatingDoc] = useState<"resume" | "coverLetter" | null>(null);
 
-  async function loadApplications() {
-    setLoading(true);
-    setError(null);
+  // silent=true is used for background refreshes (polling, tab focus) so
+  // they don't flash "Loading..." over the table or surface a transient
+  // network blip as a user-facing error banner.
+  async function loadApplications(silent = false) {
+    if (!silent) {
+      setLoading(true);
+      setError(null);
+    }
 
     try {
       const res = await fetch("/api/job-applications");
@@ -81,14 +86,52 @@ export default function MainClient() {
     } catch (err: unknown) {
       const message =
         err instanceof Error ? err.message : "Failed to load applications.";
-      setError(message);
+      if (!silent) {
+        setError(message);
+      } else {
+        console.error("Background refresh failed:", message);
+      }
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }
 
   useEffect(() => {
     loadApplications();
+  }, []);
+
+  // Background sync: the server pushes a "changed" event over SSE the
+  // moment a write lands (including from the Chrome extension), so this
+  // fires near-instantly instead of on a timer. Silent refreshes reuse
+  // loadApplications's existing merge logic, which already preserves
+  // `selected` by id and leaves search, filters, sort, and any
+  // in-progress edit fields untouched. The focus/visibility refresh is a
+  // cheap fallback in case the SSE connection dropped silently (e.g. the
+  // machine slept) -- EventSource reconnects on its own, this just covers
+  // the gap.
+  useEffect(() => {
+    const source = new EventSource("/api/job-applications/events");
+
+    source.onmessage = (event) => {
+      if (event.data === "changed") {
+        loadApplications(true);
+      }
+    };
+
+    function handleVisible() {
+      if (document.visibilityState === "visible") {
+        loadApplications(true);
+      }
+    }
+
+    document.addEventListener("visibilitychange", handleVisible);
+    window.addEventListener("focus", handleVisible);
+
+    return () => {
+      source.close();
+      document.removeEventListener("visibilitychange", handleVisible);
+      window.removeEventListener("focus", handleVisible);
+    };
   }, []);
 
   function getDurationDays(app: Application): number | null {

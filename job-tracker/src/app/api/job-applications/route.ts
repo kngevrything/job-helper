@@ -4,6 +4,7 @@ import { JobApplication, DUPLICATE_MATCH_COLLATION } from "@/models/JobApplicati
 import { jobApplicationInputSchema } from "@/lib/validation/jobApplication";
 import { generateOutputs } from "@/lib/prompts/generateOutputs";
 import { createApplicationFolder } from "@/lib/files/createApplicationFolder";
+import { applicationEvents } from "@/lib/events";
 
 // The findOne-then-create below has a check-then-act race: two near-simultaneous
 // requests can both pass the findOne check, and the second create() then trips
@@ -119,6 +120,11 @@ export async function POST(req: Request) {
       }
       throw error;
     }
+
+    // Lets any open tab's SSE connection (see /api/job-applications/events)
+    // know to silently refresh -- this is what the Chrome extension's write
+    // triggers to update the table without the page having to poll.
+    applicationEvents.emit("changed");
 
     return NextResponse.json({
       ok: true,
