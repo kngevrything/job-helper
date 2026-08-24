@@ -116,6 +116,23 @@ saved `jobUrl` is normalized to the canonical `/jobs/view/<id>/` form
 when an id was found, since search/collections URLs aren't stable
 permalinks to the posting.
 
+Confirmed live against a real posting reached through a
+`/jobs/search-results/?currentJobId=...` page (a Yahoo listing) that
+this page shape doesn't expose ANY of the DOM company/title selectors
+above, nor JSON-LD, unlike the standalone `/jobs/view/` page. It falls
+all the way through to the `document.title` parse, the least reliable
+tier. That tier itself had a real bug on this posting's title
+(`"Senior Software Engineer - Developer Experience & Tools | Yahoo |
+LinkedIn"`): splitting on `-` and `|` interchangeably grabbed
+"Developer Experience & Tools" (part of the job title, which contains
+its own hyphen) as the company instead of "Yahoo". Fixed by preferring
+a split on `|` first when one is present (a job title can contain a
+hyphen but not a pipe) and only falling back to hyphen-splitting when
+there's no pipe in the title at all. No selectors have been found yet
+for the search-results page's actual company-name element, so a
+posting reached that way still won't get above "low" confidence, it
+just gets the *right* low-confidence answer now instead of a wrong one.
+
 I'm fairly confident about the URL/id parsing, much less confident
 about the class-name selectors, since LinkedIn's markup is obfuscated,
 varies by auth state, and changes without notice. Worth testing

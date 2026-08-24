@@ -9,10 +9,8 @@
 function extractJobIdFromUrl(url) {
   const pathMatch = url.match(/\/jobs\/(\d+)/);
   if (pathMatch) return pathMatch[1];
-  // Greenhouse's embedded application-form URLs
-  // (job-boards.greenhouse.io/embed/job_app?for={company}&token={id})
-  // carry the job id in a "token" query param instead of the URL path.
-  // Confirmed live against a real Speechify embed link.
+  // Embed form URLs (/embed/job_app?...&token={id}) carry the id in a
+  // "token" query param instead of the path.
   try {
     const token = new URL(url).searchParams.get('token');
     if (token && /^\d+$/.test(token)) return token;
@@ -23,13 +21,9 @@ function extractJobIdFromUrl(url) {
 }
 
 function canonicalizeEmbedUrl(url) {
-  // The embed form URL itself isn't a useful saved link: stripping its
-  // query string (as the normal jobUrl logic does below) throws away
-  // the "for"/"token" params that are the only thing identifying the
-  // posting, leaving a dead ".../embed/job_app" link. When both are
-  // present, reconstruct the canonical non-embed posting URL instead.
-  // Confirmed live against a real Speechify embed link; only handles
-  // job-boards.greenhouse.io, the one host this shape has been observed on.
+  // Embed form URLs have no useful path of their own, "for"/"token" are
+  // the only identifying info, so rebuild the canonical posting URL
+  // instead of saving a dead ".../embed/job_app" link.
   let parsed;
   try {
     parsed = new URL(url);
@@ -96,10 +90,7 @@ function tryDomSelectors() {
     const el = document.querySelector(sel);
     if (!el) continue;
     if (el.tagName === 'IMG' && el.alt && el.alt.trim()) {
-      // Company logo <img> alt text is commonly authored as "{Company}
-      // Logo" (confirmed live on Speechify's job-boards.greenhouse.io
-      // posting: alt="Speechify Logo"), so strip a trailing "Logo" word
-      // rather than using the raw alt text as the company name.
+      // Logo alt text is often "{Company} Logo" -- strip the suffix.
       company = el.alt.trim().replace(/\s+logo$/i, '').trim();
       break;
     }

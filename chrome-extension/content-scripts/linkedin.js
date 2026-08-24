@@ -127,7 +127,22 @@ function tryDocumentTitle() {
     return { jobTitle: match[1].trim(), company: match[2].trim(), confidence: 'low', via: 'document-title' };
   }
 
-  const parts = raw.split(/\s[-|]\s/).map((p) => p.trim()).filter(Boolean);
+  // Prefer splitting on "|" when present: a job title can contain a
+  // hyphen but not a pipe, so hyphen-splitting alone can misread a
+  // hyphenated title as "job title - company". First segment is the
+  // job title, last is the company.
+  const pipeParts = raw.split('|').map((p) => p.trim()).filter(Boolean);
+  if (pipeParts.length >= 2) {
+    return {
+      jobTitle: pipeParts[0],
+      company: pipeParts[pipeParts.length - 1],
+      confidence: 'low',
+      via: 'document-title',
+    };
+  }
+
+  // No pipe: fall back to the simpler "Job Title - Company" shape.
+  const parts = raw.split(/\s-\s/).map((p) => p.trim()).filter(Boolean);
   if (parts.length >= 2) {
     return { jobTitle: parts[0], company: parts[1], confidence: 'low', via: 'document-title' };
   }
