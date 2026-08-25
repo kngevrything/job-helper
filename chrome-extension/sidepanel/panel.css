@@ -129,6 +129,29 @@ button {
   font-weight: 600;
 }
 
+/* Distinct palette from .duplicate-notice and the scrape-confidence
+   .notice styling on purpose -- this is a low-stakes suggestion ("you've
+   used different casing for this company before"), not a warning or a
+   duplicate-application flag, so it shouldn't compete visually with
+   those. */
+.casing-conflict-notice {
+  background: #e8f0fe;
+  border-color: #aecbfa;
+  color: #174ea6;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.casing-chip {
+  padding: 2px 8px;
+  font-size: 12px;
+  background: white;
+  border-color: #aecbfa;
+  color: #174ea6;
+}
+
 .result-message {
   margin-top: 10px;
   padding: 8px;

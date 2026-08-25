@@ -99,6 +99,9 @@ const els = {
   notConnectedNotice: document.getElementById('notConnectedNotice'),
   scrapeNotice: document.getElementById('scrapeNotice'),
   duplicateNotice: document.getElementById('duplicateNotice'),
+  casingConflictNotice: document.getElementById('casingConflictNotice'),
+  casingConflictText: document.getElementById('casingConflictText'),
+  useCasingSuggestionBtn: document.getElementById('useCasingSuggestionBtn'),
   form: document.getElementById('captureForm'),
   jobTitle: document.getElementById('jobTitle'),
   company: document.getElementById('company'),
@@ -285,6 +288,113 @@ function attachDuplicateCheckTriggers() {
   });
 }
 
+// ---- Company casing lookup ---------------------------------------------
+// Every scraper falls back to a guessed casing for company when the
+// real page/API data doesn't give one (a title-cased guess off the
+// URL's org slug or Workday's tenant subdomain -- see docs/notes.md).
+// That guess is usually wrong for stylized names ("1password" instead
+// of "1Password"), and letting it through as-typed means the same
+// company ends up saved under multiple casings across records, which
+// reads as different companies anywhere casing isn't collation-aware
+// (e.g. a plain-text search). This looks up whatever casing you've
+// already used for that company (case-insensitive, same
+// DUPLICATE_MATCH_COLLATION the duplicate check uses server-side) and
+// either corrects the field automatically or, if the scrape itself was
+// high confidence and still disagrees, surfaces it as a low-key
+// suggestion instead of guessing which one is right.
+//
+// "Confidence" here is the scraper's overall `confidence` field -- there
+// is no separate per-field signal for company alone. Every scraper
+// already downgrades that field to medium/low specifically when company
+// came from a slug/subdomain guess rather than real page or API data
+// (see each content-scripts/*.js), so "not high" is already a reliable
+// proxy for "company is probably a guess" here.
+//
+// Called two ways: right after a scrape populates the form (see
+// runScrape()), using that scraper's own confidence -- and on manual
+// typing/blur in the company field (see attachCasingCheckTriggers()
+// below), always passed confidence 'high'. A hand-typed value is
+// deliberate the same way a scraper's high-confidence page/API data
+// is, so it gets the same treatment: never silently overwritten, just
+// offered as a one-click fix if it disagrees with history. Not run on
+// draft-restore -- a restored draft was already checked (as a scrape
+// or as manual input) before it was saved as a draft.
+
+function hideCasingConflict() {
+  els.casingConflictNotice.classList.add('hidden');
+  els.casingConflictText.textContent = '';
+  els.useCasingSuggestionBtn.textContent = '';
+  els.useCasingSuggestionBtn.onclick = null;
+}
+
+function showCasingSuggestion(savedCompany) {
+  // Scraped value stays in the field untouched -- it's already
+  // high-confidence, so it's the safer default. This is an opt-in
+  // correction, not a forced pick between two buttons.
+  els.casingConflictText.textContent = "You've saved this company as:";
+  els.useCasingSuggestionBtn.textContent = savedCompany;
+  els.useCasingSuggestionBtn.onclick = () => {
+    els.company.value = savedCompany;
+    hideCasingConflict();
+    saveDraftDebounced();
+  };
+  els.casingConflictNotice.classList.remove('hidden');
+}
+
+async function checkCompanyCasing(company, confidence) {
+  hideCasingConflict();
+  if (!company) return;
+
+  const apiBaseUrl = await getApiBaseUrl();
+  if (!apiBaseUrl || !(await hasApiPermission(apiBaseUrl))) return;
+
+  try {
+    const url =
+      `${apiBaseUrl}/api/job-applications/company-casing` +
+      `?company=${encodeURIComponent(company)}`;
+    const res = await fetch(url);
+    if (!res.ok) return;
+    const payload = await res.json().catch(() => null);
+    const saved = payload && payload.ok ? payload.company : null;
+    if (!saved || saved === company) return;
+
+    if (confidence === 'high') {
+      // Real page/API data still disagrees with history -- could be the
+      // company's branding actually changed, or old DB data was entered
+      // inconsistently. Don't guess which is right; leave the scraped
+      // value in place and offer the saved casing as a one-click fix.
+      showCasingSuggestion(saved);
+    } else {
+      // Normal case: company was a guess (see comment above). Silently
+      // correct it against what's already in the DB.
+      els.company.value = saved;
+      await saveDraft();
+    }
+  } catch (err) {
+    // API unreachable -- say nothing rather than guess, same as the
+    // duplicate check.
+  }
+}
+
+let casingCheckTimer = null;
+
+function scheduleCasingCheck() {
+  clearTimeout(casingCheckTimer);
+  casingCheckTimer = setTimeout(() => {
+    checkCompanyCasing(els.company.value.trim(), 'high');
+  }, 600);
+}
+
+function casingCheckNow() {
+  clearTimeout(casingCheckTimer);
+  checkCompanyCasing(els.company.value.trim(), 'high');
+}
+
+function attachCasingCheckTriggers() {
+  els.company.addEventListener('input', scheduleCasingCheck);
+  els.company.addEventListener('blur', casingCheckNow);
+}
+
 function fillUrlIfEmpty(url) {
   if (!url) return;
   if (els.jobUrl.value.trim()) return;
@@ -294,6 +404,7 @@ function fillUrlIfEmpty(url) {
 async function runScrape() {
   els.scrapeNotice.classList.add('hidden');
   hideDuplicateNotice();
+  hideCasingConflict();
   const tab = await getSourceTab();
   if (!tab || !tab.url) {
     showScrapeNotice('No active tab detected. Enter details manually.', true);
@@ -353,6 +464,7 @@ async function runScrape() {
   populateForm(response);
   await saveDraft();
   await checkDuplicate(response.company, response.jobId);
+  await checkCompanyCasing(response.company, response.confidence);
   if (response.confidence === 'high') {
     showScrapeNotice('Captured from page structured data.', false);
   } else {
@@ -556,6 +668,7 @@ els.form.addEventListener('submit', async (e) => {
         els.jobId.value = '';
         els.createFiles.checked = true;
         hideDuplicateNotice();
+        hideCasingConflict();
       }
     } else {
       const text = await res.text().catch(() => '');
@@ -640,4 +753,5 @@ function attachAutoRescan() {
   attachDraftAutosave();
   attachAutoRescan();
   attachDuplicateCheckTriggers();
+  attachCasingCheckTriggers();
 })();

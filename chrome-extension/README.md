@@ -77,6 +77,13 @@ step 5 below.
   `job-tracker` app. A duplicate application (same company and job ID)
   is flagged before you save, not just after, both right after a
   scrape and if you edit the company or job ID fields by hand.
+- A guessed company casing (the URL-slug/subdomain fallback every
+  scraper falls back to when the page/API doesn't name the company) is
+  checked against what you've already saved for that company, the same
+  way the duplicate check is. A guess gets silently corrected to
+  match; a high-confidence scrape or your own typed edit that still
+  disagrees with your saved history gets a one-click suggestion
+  instead of being changed for you.
 - If "Create files" is checked and the save succeeds, the panel fetches
   the generated Excel row and starter-prompt text and gives you a Copy
   button for each.
@@ -102,7 +109,7 @@ content-scripts/lever.js       Lever scraper
 content-scripts/ashby.js       Ashby scraper
 sidepanel/panel.html           Panel markup: settings + capture form
 sidepanel/panel.css            Styling
-sidepanel/panel.js             Permission handling, scrape request, draft autosave, submit logic
+sidepanel/panel.js             Permission handling, scrape request, draft autosave, duplicate/casing checks, submit logic
 ```
 
 ## Known limitations

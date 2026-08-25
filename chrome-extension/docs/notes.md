@@ -237,6 +237,67 @@ Test this against a couple of real postings once you can drive a
 browser against it, and tighten or replace the unverified tiers based
 on what you actually see.
 
+## Company casing correction
+
+Every scraper above ends up guessing company casing from a URL slug or
+subdomain when the page/API itself doesn't supply a real name --
+Ashby's API has no company field at all, so it's *always* a guess
+there, but Greenhouse, Lever, and Workday fall back the same way
+whenever their own better tiers come up empty. A slug like
+`jobs.ashbyhq.com/1password/...` title-cases to `"1password"`, not
+`"1Password"` -- there's no way to recover real branding from a URL
+segment.
+
+Left alone, that means the same company can end up saved under
+multiple casings across records ("1password" vs "1Password"), which
+reads as two different companies anywhere the comparison isn't
+collation-aware (skimming the table, exporting to a spreadsheet,
+`Ctrl+F`). Fixed with a small correction loop between the extension
+and `job-tracker`, not by trying to make any scraper smarter about
+casing -- there's no reliable source for real branding short of asking
+you.
+
+**`job-tracker`:** a new read-only endpoint,
+`GET /api/job-applications/company-casing?company=<guess>`
+(`src/app/api/job-applications/company-casing/route.ts`), does a
+case-insensitive lookup via the same `DUPLICATE_MATCH_COLLATION` the
+duplicate-check endpoint and the unique index itself use, and returns
+the casing from your most recently created matching application, or
+`null` if you've never applied there.
+
+**Extension (`panel.js`):** calls that lookup two ways --
+
+- After every scrape (all four sites), using that scraper's own
+  overall `confidence` value. There's no separate per-field confidence
+  for company -- every scraper already downgrades `confidence` to
+  medium/low specifically when company came from a slug/subdomain
+  guess (see each scraper's section above), so "not high" is already a
+  reliable stand-in for "company is probably a guess."
+- On manual typing/blur in the Company field (debounced 600ms, same
+  shape as `scheduleDuplicateCheck`), always passed `confidence:
+  'high'` -- a hand-typed value is deliberate the same way a
+  high-confidence scrape is.
+
+Behavior splits on that confidence: a guessed (not-high-confidence)
+value gets silently rewritten to match your saved casing, no notice,
+nothing to dismiss. A high-confidence value (real page/API data, or
+something you typed yourself) that still disagrees with your history
+is never auto-overwritten -- instead `#casingConflictNotice` shows a
+one-click chip with the saved casing (`showCasingSuggestion()` /
+`hideCasingConflict()`), so you decide, since a real disagreement
+could mean the company's branding actually changed or an old record
+was entered inconsistently, not that this scrape is wrong.
+
+**Deliberately not applied to `job-tracker`'s own Add-application
+form.** That form's `TypeaheadInput` for company is intentionally
+free-form (see `job-tracker`'s CLAUDE.md) -- the same company name can
+legitimately belong to different real entities there (e.g. a staffing
+vendor posting under a client's name), so nudging toward one "correct"
+casing would be actively wrong sometimes. The extension's version is
+safe from that problem because every suggestion is anchored to one
+specific job posting URL you're actively looking at, not a bare
+freeform company name with no other context.
+
 ## Other known rough edges
 
 - **Duplicate-list lookup cost:** the "Create files" flow pulls your
