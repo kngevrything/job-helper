@@ -473,17 +473,32 @@ async function runScrape(force = false) {
   lastScrapedTabId = tab.id;
   lastScrapedUrl = tab.url;
 
-  els.scrapeNotice.classList.add('hidden');
+  // scrapeNotice is deliberately NOT hidden here. Every branch below
+  // ends by calling showScrapeNotice() with fresh text, so hiding it
+  // first only matters on the branch with a real await in between (the
+  // actual scrape + duplicate/casing checks) -- there, it collapsed the
+  // box for a frame and re-expanded it once the new text was ready,
+  // which is the flicker at the top on a no-scraper -> captured switch.
+  // Leaving the old text in place until it's overwritten avoids that.
+  // duplicateNotice/casingConflictNotice don't have that problem (see
+  // checkDuplicate()/checkCompanyCasing() above), but still need
+  // hiding here since not every branch below re-checks them.
   hideDuplicateNotice();
   hideCasingConflict();
 
   const site = detectSite(tab.url);
   if (!site) {
+    // A genuinely different tab (the dedup check above already filtered
+    // out same-tab refocus noise) that isn't one of the supported ATSes
+    // -- most likely a company's own careers page. Reset the form
+    // instead of leaving the previous tab's title/company sitting here
+    // mislabeled as this one; same "trust the current tab" rule a
+    // successful scrape already applies via populateForm() below.
+    populateForm({ jobUrl: tab.url });
     showScrapeNotice(
       'No scraper for this site yet (Greenhouse, LinkedIn, Workday, Lever, Ashby so far). URL filled in, enter the rest manually.',
       true
     );
-    fillUrlIfEmpty(tab.url);
     await saveDraft();
     return;
   }

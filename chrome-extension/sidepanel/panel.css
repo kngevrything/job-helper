@@ -117,6 +117,18 @@ button {
   font-size: 12px;
 }
 
+/* Fixed at roughly 3 lines' worth of height so switching tabs doesn't
+   resize this box every time -- "no scraper for this site" is much
+   longer than "Captured from page structured data.", and a box that
+   grows/shrinks with the message made every tab switch feel like a
+   layout jump on its own, even with the notice-churn fixes above. */
+#scrapeNotice {
+  min-height: 70px;
+  line-height: 1.4;
+  display: flex;
+  align-items: center;
+}
+
 /* Distinct from the scrape-confidence .notice styling on purpose --
    "this scrape is low-confidence" and "you already applied here" are
    different situations you'd want to tell apart at a glance. Same
