@@ -218,16 +218,20 @@ async function injectContentScript(tabId, site) {
 // as the rest of the capture flow -- a broken dupe check should never
 // block or alarm you about something it couldn't actually verify.
 
-function showDuplicateNotice(data) {
+function duplicateNoticeText(data) {
   const appliedDate = data.createdAt
     ? new Date(data.createdAt).toLocaleDateString()
     : null;
   const statusText = data.endedAt
     ? `${data.status} (ended ${new Date(data.endedAt).toLocaleDateString()})`
     : data.status;
-  els.duplicateNotice.textContent = appliedDate
+  return appliedDate
     ? `Already applied: ${statusText}, applied ${appliedDate}.`
     : `Already applied: ${statusText}.`;
+}
+
+function showDuplicateNotice(text) {
+  els.duplicateNotice.textContent = text;
   els.duplicateNotice.classList.remove('hidden');
 }
 
@@ -237,24 +241,45 @@ function hideDuplicateNotice() {
 }
 
 async function checkDuplicate(company, jobId) {
-  hideDuplicateNotice();
-  if (!company || !jobId) return;
+  if (!company || !jobId) {
+    hideDuplicateNotice();
+    return;
+  }
 
   const apiBaseUrl = await getApiBaseUrl();
-  if (!apiBaseUrl || !(await hasApiPermission(apiBaseUrl))) return;
+  if (!apiBaseUrl || !(await hasApiPermission(apiBaseUrl))) {
+    hideDuplicateNotice();
+    return;
+  }
 
+  let data = null;
   try {
     const url =
       `${apiBaseUrl}/api/job-applications/check` +
       `?company=${encodeURIComponent(company)}&jobId=${encodeURIComponent(jobId)}`;
     const res = await fetch(url);
-    if (!res.ok) return;
-    const payload = await res.json().catch(() => null);
-    if (payload && payload.ok && payload.exists && payload.data) {
-      showDuplicateNotice(payload.data);
+    if (res.ok) {
+      const payload = await res.json().catch(() => null);
+      if (payload && payload.ok && payload.exists && payload.data) {
+        data = payload.data;
+      }
     }
   } catch (err) {
     // API unreachable -- say nothing rather than guess.
+  }
+
+  if (!data) {
+    hideDuplicateNotice();
+    return;
+  }
+
+  // Only touch the DOM if the outcome actually changed -- re-checking
+  // mid-typing (blur, debounce tick) while the same duplicate is still
+  // in effect would otherwise hide and re-show this on every check,
+  // which is what caused the form to visibly jump while typing.
+  const text = duplicateNoticeText(data);
+  if (els.duplicateNotice.classList.contains('hidden') || els.duplicateNotice.textContent !== text) {
+    showDuplicateNotice(text);
   }
 }
 
@@ -342,37 +367,56 @@ function showCasingSuggestion(savedCompany) {
 }
 
 async function checkCompanyCasing(company, confidence) {
-  hideCasingConflict();
-  if (!company) return;
+  if (!company) {
+    hideCasingConflict();
+    return;
+  }
 
   const apiBaseUrl = await getApiBaseUrl();
-  if (!apiBaseUrl || !(await hasApiPermission(apiBaseUrl))) return;
+  if (!apiBaseUrl || !(await hasApiPermission(apiBaseUrl))) {
+    hideCasingConflict();
+    return;
+  }
 
+  let suggestion = null;
   try {
     const url =
       `${apiBaseUrl}/api/job-applications/company-casing` +
       `?company=${encodeURIComponent(company)}`;
     const res = await fetch(url);
-    if (!res.ok) return;
-    const payload = await res.json().catch(() => null);
-    const saved = payload && payload.ok ? payload.company : null;
-    if (!saved || saved === company) return;
-
-    if (confidence === 'high') {
-      // Real page/API data still disagrees with history -- could be the
-      // company's branding actually changed, or old DB data was entered
-      // inconsistently. Don't guess which is right; leave the scraped
-      // value in place and offer the saved casing as a one-click fix.
-      showCasingSuggestion(saved);
-    } else {
-      // Normal case: company was a guess (see comment above). Silently
-      // correct it against what's already in the DB.
-      els.company.value = saved;
-      await saveDraft();
+    if (res.ok) {
+      const payload = await res.json().catch(() => null);
+      const saved = payload && payload.ok ? payload.company : null;
+      if (saved && saved !== company) {
+        if (confidence === 'high') {
+          // Real page/API data still disagrees with history -- could be
+          // the company's branding actually changed, or old DB data was
+          // entered inconsistently. Don't guess which is right; leave
+          // the scraped value in place and offer the saved casing as a
+          // one-click fix.
+          suggestion = saved;
+        } else {
+          // Normal case: company was a guess (see comment above).
+          // Silently correct it against what's already in the DB.
+          els.company.value = saved;
+          await saveDraft();
+        }
+      }
     }
   } catch (err) {
     // API unreachable -- say nothing rather than guess, same as the
     // duplicate check.
+  }
+
+  // Only touch the DOM if the outcome actually changed -- same reasoning
+  // as checkDuplicate() above.
+  if (!suggestion) {
+    hideCasingConflict();
+  } else if (
+    els.casingConflictNotice.classList.contains('hidden') ||
+    els.useCasingSuggestionBtn.textContent !== suggestion
+  ) {
+    showCasingSuggestion(suggestion);
   }
 }
 
@@ -401,15 +445,37 @@ function fillUrlIfEmpty(url) {
   els.jobUrl.value = url;
 }
 
-async function runScrape() {
-  els.scrapeNotice.classList.add('hidden');
-  hideDuplicateNotice();
-  hideCasingConflict();
+// Auto-rescan (tab activation, tab update, window focus) fires on every
+// one of those events even when the active tab hasn't actually changed --
+// e.g. alt-tabbing back to the browser refires windows.onFocusChanged on
+// the same tab/url. Without this, every one of those no-op events still
+// hid and rebuilt all three notices above the form, which is most of
+// what made the panel feel like it was flickering/sliding on its own.
+// Tracking the last-scraped tab+url lets those no-op triggers skip the
+// whole rebuild. Manual triggers (Rescan button, Clear) pass force=true
+// to bypass this, since the user is explicitly asking for a fresh pull.
+let lastScrapedTabId = null;
+let lastScrapedUrl = null;
+
+async function runScrape(force = false) {
   const tab = await getSourceTab();
   if (!tab || !tab.url) {
+    els.scrapeNotice.classList.add('hidden');
+    hideDuplicateNotice();
+    hideCasingConflict();
     showScrapeNotice('No active tab detected. Enter details manually.', true);
     return;
   }
+
+  if (!force && tab.id === lastScrapedTabId && tab.url === lastScrapedUrl) {
+    return;
+  }
+  lastScrapedTabId = tab.id;
+  lastScrapedUrl = tab.url;
+
+  els.scrapeNotice.classList.add('hidden');
+  hideDuplicateNotice();
+  hideCasingConflict();
 
   const site = detectSite(tab.url);
   if (!site) {
@@ -476,7 +542,7 @@ async function runScrape() {
 }
 
 els.rescanBtn.addEventListener('click', async () => {
-  await runScrape();
+  await runScrape(true);
   await saveDraft();
 });
 
@@ -487,7 +553,7 @@ els.clearDraftBtn.addEventListener('click', async () => {
   els.createFiles.checked = true;
   els.resultMessage.classList.add('hidden');
   hideOutputs();
-  await runScrape();
+  await runScrape(true);
 });
 
 // ---- Generated outputs (excelRowText / starterPromptText) ---------------
