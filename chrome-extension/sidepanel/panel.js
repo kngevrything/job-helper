@@ -180,6 +180,7 @@ function detectSite(url) {
   if (/(^|\.)linkedin\.com$/.test(host)) return 'linkedin';
   if (/(^|\.)myworkdayjobs\.com$/.test(host)) return 'workday';
   if (/(^|\.)lever\.co$/.test(host)) return 'lever';
+  if (/(^|\.)ashbyhq\.com$/.test(host)) return 'ashby';
   return null;
 }
 
@@ -188,6 +189,7 @@ const CONTENT_SCRIPT_BY_SITE = {
   linkedin: 'content-scripts/linkedin.js',
   workday: 'content-scripts/workday.js',
   lever: 'content-scripts/lever.js',
+  ashby: 'content-scripts/ashby.js',
 };
 
 async function injectContentScript(tabId, site) {
@@ -301,7 +303,7 @@ async function runScrape() {
   const site = detectSite(tab.url);
   if (!site) {
     showScrapeNotice(
-      'No scraper for this site yet (Greenhouse, LinkedIn, Workday, Lever so far). URL filled in, enter the rest manually.',
+      'No scraper for this site yet (Greenhouse, LinkedIn, Workday, Lever, Ashby so far). URL filled in, enter the rest manually.',
       true
     );
     fillUrlIfEmpty(tab.url);

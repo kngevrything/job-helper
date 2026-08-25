@@ -27,7 +27,8 @@
     "*://*.greenhouse.io/*",
     "*://*.linkedin.com/*",
     "*://*.myworkdayjobs.com/*",
-    "*://jobs.lever.co/*"
+    "*://jobs.lever.co/*",
+    "*://*.ashbyhq.com/*"
   ],
   "optional_host_permissions": [
     "http://localhost/*",
@@ -53,6 +54,11 @@
     {
       "matches": ["*://jobs.lever.co/*"],
       "js": ["content-scripts/lever.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["*://jobs.ashbyhq.com/*"],
+      "js": ["content-scripts/ashby.js"],
       "run_at": "document_idle"
     }
   ]

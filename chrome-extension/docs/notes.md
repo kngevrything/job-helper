@@ -192,6 +192,51 @@ a `JobPosting` schema block, unlike Greenhouse/LinkedIn where that's
 been observed directly. The `og:title` tier is the one that's actually
 been verified live, and only against a single posting/tenant.
 
+### Ashby
+
+Ashby job board pages (`jobs.ashbyhq.com/{orgSlug}/{jobId}`) are fully
+client-side rendered -- confirmed live, server-side, against a real
+posting: the initial HTML has no JSON-LD, no `og:*` meta tags, and
+`<title>` is a static `"Jobs"` placeholder until the SPA hydrates. So
+instead of scraping rendered markup as the primary source the way
+Greenhouse/Lever do, this calls Ashby's own public Job Board API --
+`https://api.ashbyhq.com/posting-api/job-board/{orgSlug}`, the same
+unauthenticated JSON endpoint Ashby documents for embedding a job
+board on a company's own careers page. Confirmed live: a server-side
+`GET .../posting-api/job-board/1password` returned
+`{ jobs: [{ id, title, jobUrl, ... }] }` with no auth needed. `jobId`
+from the URL is matched against each entry's `id` to find that
+posting's `title`.
+
+**Caveat -- weaker verification than the other four scrapers.** That
+API call was made server-side, with no browser and no CORS
+enforcement in the loop -- there was no working Chrome connection
+available to drive an actual browser against `jobs.ashbyhq.com` when
+this was written. Two things are consequently unverified, unlike
+everything else in this section:
+
+- Whether `api.ashbyhq.com` actually sends CORS headers permitting a
+  `fetch()` from a `jobs.ashbyhq.com` content script. If it doesn't,
+  `tryJobBoardApi()` fails closed (catches the error, returns `null`)
+  and the scraper falls through to the DOM/title tiers below --
+  degraded confidence, not a break.
+- What `document.title` becomes once the SPA hydrates, and whether
+  there's a stable DOM selector for the job title. The `h1` and
+  `document.title` fallback tiers are generic guesses (the `h1` tier
+  mirrors Greenhouse's own last-resort selector), not confirmed
+  against a real rendered Ashby page.
+
+The API response also has no company/organization name field at all
+(confirmed against the same live response) -- only per-job fields --
+so `company` always falls back to the same tiers as Greenhouse/Lever:
+`document.title` parsing, then a title-cased guess off the URL's org
+slug (e.g. won't recover "1Password" from "1password"), same
+last-resort caveat as those two.
+
+Test this against a couple of real postings once you can drive a
+browser against it, and tighten or replace the unverified tiers based
+on what you actually see.
+
 ## Other known rough edges
 
 - **Duplicate-list lookup cost:** the "Create files" flow pulls your
