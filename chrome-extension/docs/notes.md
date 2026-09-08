@@ -237,6 +237,52 @@ Test this against a couple of real postings once you can drive a
 browser against it, and tighten or replace the unverified tiers based
 on what you actually see.
 
+### GitHub
+
+GitHub's public job board (`github.careers`) is a white-labeled iCIMS
+"Company Hub" site -- the login portal at
+`careers-githubinc.icims.com` confirms iCIMS under the hood, but
+candidates browse `github.careers`, not an `icims.com` subdomain.
+Other iCIMS-powered career sites use their own custom domains too, so
+this scraper is matched to `github.careers` specifically rather than a
+general iCIMS host pattern; a different company's iCIMS-backed career
+site would need its own domain added the same way.
+
+Single-tenant site -- only GitHub postings live here -- so `company`
+is hardcoded to `"GitHub"` instead of guessed from a URL slug or
+subdomain the way Greenhouse/Workday/Ashby fall back. That's more
+reliable than any of those guesses, since there's no ambiguity about
+who's hiring.
+
+`jobTitle` prefers a page JSON-LD `JobPosting` block if present, then
+falls back to `og:title`/`document.title`. Verified live against one
+real posting (`github.careers/careers-home/jobs/5611?lang=en-us`):
+both `og:title` and `<title>` read `"{Job Title} in {Location} |
+GitHub, Inc."`, e.g. `"Staff Software Engineer in United States |
+GitHub, Inc."`. That fetch found no JSON-LD block, but it was a
+non-browser HTML fetch that may not reflect everything a real browser
+sees, so JSON-LD's absence isn't fully confirmed -- it's kept as an
+optional first tier in case a real browser turns up more.
+
+Splitting the location back off the title is the fragile part: the
+suffix is always `"... in {Location}"`, and a title could itself
+contain `" in "` (e.g. "Engineer in Test" combined with a location
+would read "Engineer in Test in United States"). Splitting on the
+LAST `" in "` occurrence handles that correctly, since the location is
+always appended last -- but this is regex-shaped reasoning about one
+observed title format, not something tested against a title that
+actually has that ambiguity. Only tested against one real posting
+overall, so confidence never goes above "medium" -- test against a
+couple more real postings (ideally one with a title containing "in")
+before trusting it unattended, same caveat as Ashby.
+
+`jobId` comes from the URL path: job URLs live under a few different
+prefixes (`/careers-home/jobs/<id>`, `/early-in-profession/jobs/<id>`,
+etc.), but the id is always the numeric segment right after `/jobs/`,
+so the regex anchors on that instead of a fixed prefix. Confirmed
+against several real URLs found via search (ids like 4180, 5306,
+5611, 5441 across at least two different prefixes).
+
 ## Company casing correction
 
 Every scraper above ends up guessing company casing from a URL slug or

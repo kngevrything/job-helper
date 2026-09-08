@@ -5,7 +5,8 @@ being worked out. Use of the Chrome Extension is not advised at this
 point.
 
 Captures job applications from Greenhouse, LinkedIn, Workday, Lever,
-and Ashby job postings and writes them into your `job-tracker` app.
+Ashby, and GitHub (github.careers) job postings and writes them into
+your `job-tracker` app.
 The update flow, an Indeed scraper, a generic fallback scraper, and
 client-side excelRowText/starterPromptText regeneration aren't built
 yet, this proves capture end-to-end first.
@@ -43,17 +44,18 @@ step 5 below.
    **Connect**. Chrome will prompt you to approve access to that exact
    origin the first time, since the app's URL varies by where you host
    it and can't be baked in ahead of time.
-6. Open a Greenhouse, LinkedIn, Workday, Lever, or Ashby job posting
-   and click the extension icon (or switch to a tab that already has
-   one open).
+6. Open a Greenhouse, LinkedIn, Workday, Lever, Ashby, or GitHub
+   (github.careers) job posting and click the extension icon (or
+   switch to a tab that already has one open).
    It should auto-scrape and pre-fill the form. If it doesn't, see
    "What works right now" below for which sites are supported.
 
 ## What works right now
 
 - Open a Greenhouse, LinkedIn, Workday-hosted (`*.myworkdayjobs.com`),
-  Lever (`jobs.lever.co`), or Ashby (`jobs.ashbyhq.com`) job posting,
-  and the extension auto-fills job title, company, URL, and job ID.
+  Lever (`jobs.lever.co`), Ashby (`jobs.ashbyhq.com`), or GitHub
+  (`github.careers`) job posting, and the extension auto-fills job
+  title, company, URL, and job ID.
   Low-confidence scrapes are flagged "unverified, please confirm" so
   you know to double-check before saving.
   - **Greenhouse** and **Workday** are the most reliable.
@@ -66,6 +68,12 @@ step 5 below.
     API (verified server-side), but that API call has never been
     tried from an actual browser against a real posting -- test it
     before trusting it, see `docs/notes.md` for the specifics.
+  - **GitHub** (`github.careers`) reads the job title from the page's
+    `og:title`/`<title>` tag; company is hardcoded to "GitHub" since
+    it's a single-tenant career site. Only verified against one real
+    posting -- treat it the way you'd treat a medium-confidence scrape
+    on any other site until you've checked it against a couple more,
+    see `docs/notes.md`.
   - On any unsupported site, the form is left blank for manual entry:
     nothing blocks you from typing a capture in by hand.
 - The panel automatically rescans when you switch tabs or windows. If
@@ -107,6 +115,7 @@ content-scripts/linkedin.js    LinkedIn scraper
 content-scripts/workday.js     Workday scraper
 content-scripts/lever.js       Lever scraper
 content-scripts/ashby.js       Ashby scraper
+content-scripts/github.js      GitHub (github.careers) scraper
 sidepanel/panel.html           Panel markup: settings + capture form
 sidepanel/panel.css            Styling
 sidepanel/panel.js             Permission handling, scrape request, draft autosave, duplicate/casing checks, submit logic

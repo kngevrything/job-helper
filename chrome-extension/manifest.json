@@ -28,7 +28,8 @@
     "*://*.linkedin.com/*",
     "*://*.myworkdayjobs.com/*",
     "*://jobs.lever.co/*",
-    "*://*.ashbyhq.com/*"
+    "*://*.ashbyhq.com/*",
+    "*://*.github.careers/*"
   ],
   "optional_host_permissions": [
     "http://localhost/*",
@@ -59,6 +60,11 @@
     {
       "matches": ["*://jobs.ashbyhq.com/*"],
       "js": ["content-scripts/ashby.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["*://*.github.careers/*"],
+      "js": ["content-scripts/github.js"],
       "run_at": "document_idle"
     }
   ]
