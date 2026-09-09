@@ -237,3 +237,18 @@ button {
   white-space: pre;
   overflow-x: auto;
 }
+
+.linkedin-copy-btn {
+  width: 100%;
+  margin-bottom: 10px;
+  background: #f0f7ff;
+  border-color: #aecbfa;
+  color: #174ea6;
+  font-weight: 600;
+}
+
+.linkedin-copy-btn.copied {
+  background: #e6f4ea;
+  border-color: #a8dab5;
+  color: #1e4620;
+}

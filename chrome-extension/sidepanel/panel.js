@@ -116,6 +116,7 @@ const els = {
   jobId: document.getElementById('jobId'),
   createFiles: document.getElementById('createFiles'),
   rescanBtn: document.getElementById('rescanBtn'),
+  copyDescriptionBtn: document.getElementById('copyDescriptionBtn'),
   clearDraftBtn: document.getElementById('clearDraftBtn'),
   submitBtn: document.getElementById('submitBtn'),
   resultMessage: document.getElementById('resultMessage'),
@@ -203,6 +204,13 @@ const CONTENT_SCRIPT_BY_SITE = {
   ashby: 'content-scripts/ashby.js',
   github: 'content-scripts/github.js',
 };
+
+// Only LinkedIn has a description scraper wired up so far -- the
+// button stays hidden on every other/no site rather than showing and
+// then failing.
+function setDescriptionButtonVisible(visible) {
+  els.copyDescriptionBtn.classList.toggle('hidden', !visible);
+}
 
 async function injectContentScript(tabId, site) {
   const file = CONTENT_SCRIPT_BY_SITE[site];
@@ -472,6 +480,7 @@ async function runScrape(force = false) {
     els.scrapeNotice.classList.add('hidden');
     hideDuplicateNotice();
     hideCasingConflict();
+    setDescriptionButtonVisible(false);
     showScrapeNotice('No active tab detected. Enter details manually.', true);
     return;
   }
@@ -496,6 +505,7 @@ async function runScrape(force = false) {
   hideCasingConflict();
 
   const site = detectSite(tab.url);
+  setDescriptionButtonVisible(site === 'linkedin');
   if (!site) {
     // A genuinely different tab (the dedup check above already filtered
     // out same-tab refocus noise) that isn't one of the supported ATSes
@@ -610,27 +620,30 @@ function hideOutputs() {
 async function copyExact(text, btnEl) {
   // Copy the raw string value directly rather than selecting rendered
   // text -- selection-based copying can collapse whitespace/tabs, which
-  // would break a tab-separated Excel row on paste. Clipboard API
-  // preserves the string exactly as-is.
+  // would break a tab-separated Excel row (or a multi-paragraph job
+  // description) on paste. Clipboard API preserves the string exactly
+  // as-is.
   let success = false;
   try {
     await navigator.clipboard.writeText(text);
     success = true;
   } catch (err) {
     // Fallback for contexts where the async Clipboard API is blocked:
-    // select the *textarea's* value (still exact, unlike selecting
-    // rendered page text) and use execCommand.
-    const source = btnEl.dataset.target === 'excelRowOutput'
-      ? els.excelRowOutput
-      : els.starterPromptOutput;
-    source.removeAttribute('disabled');
-    source.select();
+    // copy from a throwaway offscreen textarea holding the exact text,
+    // rather than selecting rendered page text (which can collapse
+    // whitespace) or assuming which visible textarea the caller meant.
+    const temp = document.createElement('textarea');
+    temp.value = text;
+    temp.style.position = 'fixed';
+    temp.style.left = '-9999px';
+    document.body.appendChild(temp);
+    temp.select();
     try {
       success = document.execCommand('copy');
     } catch {
       success = false;
     }
-    source.setSelectionRange(0, 0);
+    document.body.removeChild(temp);
   }
 
   const original = btnEl.textContent;
@@ -647,6 +660,38 @@ document.querySelectorAll('.copy-btn').forEach((btn) => {
     const targetEl = document.getElementById(btn.dataset.target);
     copyExact(targetEl.value, btn);
   });
+});
+
+els.copyDescriptionBtn.addEventListener('click', async () => {
+  const tab = await getSourceTab();
+  if (!tab) return;
+
+  let response;
+  try {
+    response = await chrome.tabs.sendMessage(tab.id, { type: 'GET_JOB_DESCRIPTION' });
+  } catch (err) {
+    // Same "content script not injected yet" recovery as runScrape():
+    // the tab was open before the extension loaded/reloaded.
+    const injected = await injectContentScript(tab.id, 'linkedin');
+    if (injected) {
+      try {
+        response = await chrome.tabs.sendMessage(tab.id, { type: 'GET_JOB_DESCRIPTION' });
+      } catch (retryErr) {
+        response = null;
+      }
+    }
+  }
+
+  if (!response || !response.ok) {
+    const original = els.copyDescriptionBtn.textContent;
+    els.copyDescriptionBtn.textContent = 'Not found on this page';
+    setTimeout(() => {
+      els.copyDescriptionBtn.textContent = original;
+    }, 1500);
+    return;
+  }
+
+  await copyExact(response.description, els.copyDescriptionBtn);
 });
 
 // ---- Fetching generated outputs after create -----------------------------
@@ -832,6 +877,10 @@ function attachAutoRescan() {
   const draftMatchesTab = draft && tab && draft.url === tab.url;
   const hasDraftContent =
     draftMatchesTab && (draft.jobTitle || draft.company || draft.jobUrl || draft.jobId);
+
+  // runScrape() is what normally sets this, but the restored-draft branch
+  // below returns without calling it, so it needs setting here too.
+  setDescriptionButtonVisible(Boolean(tab && tab.url && detectSite(tab.url) === 'linkedin'));
 
   if (hasDraftContent) {
     populateForm(draft);
