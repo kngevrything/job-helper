@@ -65,7 +65,14 @@ async function loadDraft() {
 }
 
 async function saveDraft() {
+  // Tagged with the tab it was captured on/edited on -- a draft with no
+  // tab context attached can't be told apart from one that's now
+  // orphaned (you've since moved to a different tab), which is what let
+  // a stale draft resurface as "restored" on whatever tab happened to be
+  // active when the panel was reopened. See init() below.
+  const tab = await getSourceTab();
   const draft = {
+    url: tab ? tab.url : null,
     jobTitle: els.jobTitle.value,
     company: els.company.value,
     jobUrl: els.jobUrl.value,
@@ -818,8 +825,13 @@ function attachAutoRescan() {
   updateSubmitEnabled();
 
   const draft = await loadDraft();
+  const tab = await getSourceTab();
+  // Only trust the draft if it was saved from the tab we're actually
+  // looking at right now -- otherwise it's stale from whatever you had
+  // open last time the panel was closed, not the tab in front of you.
+  const draftMatchesTab = draft && tab && draft.url === tab.url;
   const hasDraftContent =
-    draft && (draft.jobTitle || draft.company || draft.jobUrl || draft.jobId);
+    draftMatchesTab && (draft.jobTitle || draft.company || draft.jobUrl || draft.jobId);
 
   if (hasDraftContent) {
     populateForm(draft);
@@ -829,7 +841,19 @@ function attachAutoRescan() {
       'Restored your unsaved draft. Click "Rescan page" to pull fresh data instead, or "Clear" to start over.',
       true
     );
+    // We already know this tab matches what's on screen -- keep the
+    // auto-rescan dedup in sync so a spurious refocus right after
+    // restore doesn't immediately trigger a redundant rescan.
+    if (tab) {
+      lastScrapedTabId = tab.id;
+      lastScrapedUrl = tab.url;
+    }
   } else {
+    if (draft) {
+      // Orphaned draft from a different tab (or the tab lookup failed) --
+      // drop it now rather than let it resurface later on the wrong tab.
+      await clearDraft();
+    }
     await runScrape();
   }
 
