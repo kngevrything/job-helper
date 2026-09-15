@@ -60,8 +60,12 @@ function extractRequisitionId(externalPath) {
   const afterUnderscore = externalPath.split('_').pop();
   if (!afterUnderscore) return null;
   // Strips a trailing "-<n>" posting-instance counter, e.g.
-  // "26WD97962-1" -> "26WD97962".
-  return afterUnderscore.replace(/-\d+$/, '');
+  // "26WD97962-1" -> "26WD97962". Limited to 1-2 digits so it only
+  // catches that counter and not a hyphenated req id whose own number
+  // is long, e.g. GM's "JR-202619720" (9 digits) must survive intact --
+  // an unbounded \d+ here previously stripped the whole "-202619720"
+  // off the end, leaving just "JR".
+  return afterUnderscore.replace(/-\d{1,2}$/, '');
 }
 
 function deriveCompanyFromTenant(tenant) {
