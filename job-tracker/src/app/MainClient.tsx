@@ -530,24 +530,6 @@ export default function MainClient() {
 
               <div className="grid gap-2">
                 <div className="flex items-center justify-between gap-3">
-                  <h3 className="text-sm font-semibold text-slate-900">Excel Row</h3>
-                  <CopyButton
-                    value={createResult.excelRowText}
-                    label="Copy"
-                    copiedLabel="Row Copied..."
-                    className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 hover:cursor-pointer"
-                  />
-                </div>
-                <textarea
-                  value={createResult.excelRowText}
-                  readOnly
-                  rows={2}
-                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700"
-                />
-              </div>
-
-              <div className="grid gap-2">
-                <div className="flex items-center justify-between gap-3">
                   <h3 className="text-sm font-semibold text-slate-900">Starter Prompt</h3>
                   <CopyButton
                     value={createResult.starterPromptText}

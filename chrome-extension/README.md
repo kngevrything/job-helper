@@ -8,8 +8,8 @@ Captures job applications from Greenhouse, LinkedIn, Workday, Lever,
 Ashby, and GitHub (github.careers) job postings and writes them into
 your `job-tracker` app.
 The update flow, an Indeed scraper, a generic fallback scraper, and
-client-side excelRowText/starterPromptText regeneration aren't built
-yet, this proves capture end-to-end first.
+client-side starterPromptText regeneration aren't built yet, this
+proves capture end-to-end first.
 
 ## Install / set up
 
@@ -43,7 +43,10 @@ step 5 below.
    `job-tracker` app's base URL from the prerequisite above, and click
    **Connect**. Chrome will prompt you to approve access to that exact
    origin the first time, since the app's URL varies by where you host
-   it and can't be baked in ahead of time.
+   it and can't be baked in ahead of time. Optionally, also enter a
+   Notion API key and database ID in the same settings panel and click
+   **Save** to enable the Notion backup copy described below; leave
+   both blank to skip it.
 6. Open a Greenhouse, LinkedIn, Workday, Lever, Ashby, or GitHub
    (github.careers) job posting and click the extension icon (or
    switch to a tab that already has one open).
@@ -93,17 +96,20 @@ step 5 below.
   disagrees with your saved history gets a one-click suggestion
   instead of being changed for you.
 - If "Create files" is checked and the save succeeds, the panel fetches
-  the generated Excel row and starter-prompt text and gives you a Copy
-  button for each.
+  the generated starter-prompt text and gives you a Copy button for it.
+- If a Notion API key and database ID are set in settings (⚙), saving an
+  application also pushes a page to that Notion database as a backup
+  copy of what you applied to, independent of whether the save to your
+  `job-tracker` app succeeds. It's a one-time write at creation only,
+  status isn't mirrored there, that stays tracked in Mongo. See its own
+  status line under the Save button.
 
 ## What's deliberately not built yet
 
 - Update flow (recent list, search, status/notes editing).
 - Indeed scraper and a generic fallback scraper for other sites.
-- Client-side regeneration of the Excel row/starter-prompt text (these
-  currently come from a lookup against your API instead).
-- Notion as an alternative backend, planned as a separate, parallel
-  effort; not started.
+- Client-side regeneration of starter-prompt text (currently comes from
+  a lookup against your API instead).
 
 ## Files
 
@@ -133,6 +139,12 @@ sidepanel/panel.js             Permission handling, scrape request, draft autosa
 - Company name on some Greenhouse and Workday postings is a
   best-effort guess rather than scraped directly; double-check it
   whenever it's flagged low-confidence.
+- The Notion database needs these exact properties before the backup
+  push will work: `Title` (title), `Company` (rich_text), `Job ID`
+  (rich_text), `Link` (url), `Date Applied` (date). Your Notion
+  integration also needs to be explicitly connected to that database
+  via its "..." menu → Connections in Notion, or the push will fail
+  with a 404 even with a valid key/ID.
 
 For implementation rationale, per-scraper internals, and other rough
 edges (useful if you're extending this), see

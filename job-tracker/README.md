@@ -89,7 +89,7 @@ When you create an application, the app generates two text outputs alongside the
 
 **Starter prompt:** A prompt you can paste into an AI chat to kick off a resume tailoring session for that role. Customize it by editing `src/lib/prompts/userConfig.local.ts`. The template receives `company` and `jobTitle` as arguments. See `userConfig.example.ts` for the shape.
 
-**Excel row (legacy):** A tab-separated row for pasting into a tracking spreadsheet. Columns in order: `Date`, `Company`, `Job ID`, `Job URL`, `Job Title`. If you don't use a spreadsheet, ignore this field.
+**Excel row (legacy, hidden):** The app still generates a tab-separated row (`Date`, `Company`, `Job ID`, `Job URL`, `Job Title`) internally for backward compatibility with existing records, but it's no longer shown in the UI. A Notion backup copy of each application is pushed from the Chrome extension instead (see the `chrome-extension` repo/README), independent of this webapp, so it doesn't depend on the local server being up.
 
 ## Testing
 

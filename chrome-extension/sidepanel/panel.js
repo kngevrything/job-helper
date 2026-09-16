@@ -9,6 +9,18 @@ async function setApiBaseUrl(url) {
   await chrome.storage.local.set({ apiBaseUrl: url });
 }
 
+async function getNotionConfig() {
+  const { notionApiKey, notionDatabaseId } = await chrome.storage.local.get([
+    'notionApiKey',
+    'notionDatabaseId',
+  ]);
+  return { notionApiKey: notionApiKey || '', notionDatabaseId: notionDatabaseId || '' };
+}
+
+async function setNotionConfig(notionApiKey, notionDatabaseId) {
+  await chrome.storage.local.set({ notionApiKey, notionDatabaseId });
+}
+
 function normalizeBaseUrl(raw) {
   // Strip trailing slash so we can safely do `${base}/api/...`.
   return raw.trim().replace(/\/+$/, '');
@@ -103,6 +115,11 @@ const els = {
   apiBaseUrlInput: document.getElementById('apiBaseUrl'),
   connectBtn: document.getElementById('connectBtn'),
   connectionStatus: document.getElementById('connectionStatus'),
+  notionApiKeyInput: document.getElementById('notionApiKey'),
+  notionDatabaseIdInput: document.getElementById('notionDatabaseId'),
+  notionSaveBtn: document.getElementById('notionSaveBtn'),
+  notionSettingsStatus: document.getElementById('notionSettingsStatus'),
+  notionStatus: document.getElementById('notionStatus'),
   notConnectedNotice: document.getElementById('notConnectedNotice'),
   scrapeNotice: document.getElementById('scrapeNotice'),
   duplicateNotice: document.getElementById('duplicateNotice'),
@@ -121,7 +138,6 @@ const els = {
   submitBtn: document.getElementById('submitBtn'),
   resultMessage: document.getElementById('resultMessage'),
   outputsSection: document.getElementById('outputsSection'),
-  excelRowOutput: document.getElementById('excelRowOutput'),
   starterPromptOutput: document.getElementById('starterPromptOutput'),
 };
 
@@ -158,6 +174,72 @@ els.connectBtn.addEventListener('click', async () => {
 
 function updateSubmitEnabled() {
   els.submitBtn.disabled = !connected;
+}
+
+// ---- Notion backup --------------------------------------------------
+// Independent of the Mongo API save above on purpose: this is a redundant
+// backup copy of "what did I apply to", not a status mirror (status stays
+// tracked in Mongo only), and it should still land in Notion even if your
+// local server/homelab Mongo is down when you hit Save. It's a one-time
+// write at creation -- nothing here updates an existing Notion page later.
+// api.notion.com is a fixed origin declared in manifest.json's
+// host_permissions, so no runtime permission request is needed the way
+// the Mongo API's variable origin requires one.
+
+els.notionSaveBtn.addEventListener('click', async () => {
+  const apiKey = els.notionApiKeyInput.value.trim();
+  const databaseId = els.notionDatabaseIdInput.value.trim();
+  await setNotionConfig(apiKey, databaseId);
+  els.notionSettingsStatus.textContent =
+    apiKey && databaseId
+      ? 'Notion backup enabled.'
+      : 'Notion backup off (enter both an API key and a database ID to enable).';
+});
+
+async function pushToNotion({ company, jobId, jobTitle, jobUrl }) {
+  const { notionApiKey, notionDatabaseId } = await getNotionConfig();
+  if (!notionApiKey || !notionDatabaseId) {
+    return { skipped: true };
+  }
+
+  const today = new Date().toISOString().split('T')[0];
+
+  const res = await fetch('https://api.notion.com/v1/pages', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${notionApiKey}`,
+      'Notion-Version': '2022-06-28',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      parent: { database_id: notionDatabaseId },
+      properties: {
+        Title: { title: [{ text: { content: jobTitle } }] },
+        Company: { rich_text: [{ text: { content: company } }] },
+        'Job ID': { rich_text: [{ text: { content: jobId } }] },
+        Link: { url: jobUrl },
+        'Date Applied': { date: { start: today } },
+      },
+    }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`Notion API error (HTTP ${res.status})${text ? `: ${text}` : ''}`);
+  }
+
+  return { skipped: false };
+}
+
+function showNotionStatus(text, ok) {
+  els.notionStatus.textContent = text;
+  els.notionStatus.style.color = ok ? '#1e7e34' : '#c0392b';
+  els.notionStatus.classList.remove('hidden');
+}
+
+function hideNotionStatus() {
+  els.notionStatus.classList.add('hidden');
+  els.notionStatus.textContent = '';
 }
 
 // ---- Scraping -------------------------------------------------------
@@ -590,30 +672,24 @@ els.clearDraftBtn.addEventListener('click', async () => {
   await runScrape(true);
 });
 
-// ---- Generated outputs (excelRowText / starterPromptText) ---------------
-// These come back from the API's POST response when createFiles was
+// ---- Generated outputs (starterPromptText) -------------------------------
+// This comes back from the API's POST response when createFiles was
 // checked -- NOT regenerated here, since I don't have the actual
 // generateOutputs.ts template logic to port and won't guess at it.
-// If the API doesn't return these fields, we say so instead of silently
+// If the API doesn't return this field, we say so instead of silently
 // showing nothing or making something up.
+// (The Excel row this used to show alongside it is gone -- Notion covers
+// that now, see the Notion backup section above.)
 
-function showOutputs(excelRowText, starterPromptText) {
-  const hasAnyContent = Boolean(
-    (excelRowText && excelRowText.trim()) || (starterPromptText && starterPromptText.trim())
-  );
+function showOutputs(starterPromptText) {
+  const hasContent = Boolean(starterPromptText && starterPromptText.trim());
 
-  els.excelRowOutput.value = excelRowText || '';
   els.starterPromptOutput.value = starterPromptText || '';
-
-  // Section only shows at all if there's something to copy -- no point
-  // hiding/showing the two blocks independently when they always arrive
-  // together in practice.
-  els.outputsSection.classList.toggle('hidden', !hasAnyContent);
+  els.outputsSection.classList.toggle('hidden', !hasContent);
 }
 
 function hideOutputs() {
   els.outputsSection.classList.add('hidden');
-  els.excelRowOutput.value = '';
   els.starterPromptOutput.value = '';
 }
 
@@ -724,6 +800,7 @@ function showResult(text, kind) {
 els.form.addEventListener('submit', async (e) => {
   e.preventDefault();
   els.resultMessage.classList.add('hidden');
+  hideNotionStatus();
 
   const apiBaseUrl = await getApiBaseUrl();
   if (!apiBaseUrl || !(await hasApiPermission(apiBaseUrl))) {
@@ -738,6 +815,21 @@ els.form.addEventListener('submit', async (e) => {
     jobUrl: els.jobUrl.value.trim(),
     createFiles: els.createFiles.checked,
   };
+
+  // Fired here, not awaited: this is a fully independent write to a
+  // different system, and it should attempt/report on its own timeline
+  // regardless of whether the Mongo API save below succeeds, fails, or
+  // is slow. That's the whole point of it living here instead of gating
+  // on the webapp's request the way it briefly did server-side.
+  pushToNotion(body)
+    .then((result) => {
+      if (!result || !result.skipped) {
+        showNotionStatus('Notion backup: saved.', true);
+      }
+    })
+    .catch((err) => {
+      showNotionStatus(`Notion backup failed: ${err.message}`, false);
+    });
 
   els.submitBtn.disabled = true;
   els.submitBtn.textContent = 'Saving…';
@@ -764,7 +856,7 @@ els.form.addEventListener('submit', async (e) => {
         const createdId = created._id || created.id;
         if (!createdId) {
           showResult(
-            'Saved, but the response had no id to look the record back up by, so I can\'t fetch excelRowText/starterPromptText.',
+            'Saved, but the response had no id to look the record back up by, so I can\'t fetch starterPromptText.',
             'error'
           );
           hideOutputs();
@@ -772,21 +864,20 @@ els.form.addEventListener('submit', async (e) => {
           els.submitBtn.textContent = 'Fetching outputs…';
           try {
             const fullRecord = await fetchCreatedRecord(apiBaseUrl, createdId);
-            const hasOutputs =
-              fullRecord && (fullRecord.excelRowText || fullRecord.starterPromptText);
+            const hasOutputs = fullRecord && fullRecord.starterPromptText;
             if (hasOutputs) {
               showResult('Saved to your application tracker.', 'success');
-              showOutputs(fullRecord.excelRowText, fullRecord.starterPromptText);
+              showOutputs(fullRecord.starterPromptText);
             } else {
               showResult(
-                'Saved, but excelRowText/starterPromptText weren\'t on the record when I looked it back up. Might need a moment to generate, or come from somewhere else.',
+                'Saved, but starterPromptText wasn\'t on the record when I looked it back up. Might need a moment to generate, or come from somewhere else.',
                 'error'
               );
               hideOutputs();
             }
           } catch (err) {
             showResult(
-              `Saved, but couldn't look it back up for excelRowText/starterPromptText: ${err.message}`,
+              `Saved, but couldn't look it back up for starterPromptText: ${err.message}`,
               'error'
             );
             hideOutputs();
@@ -852,6 +943,12 @@ function attachAutoRescan() {
 // ---- Init ---------------------------------------------------------------
 
 (async function init() {
+  const { notionApiKey, notionDatabaseId } = await getNotionConfig();
+  els.notionApiKeyInput.value = notionApiKey;
+  els.notionDatabaseIdInput.value = notionDatabaseId;
+  els.notionSettingsStatus.textContent =
+    notionApiKey && notionDatabaseId ? 'Notion backup enabled.' : '';
+
   const apiBaseUrl = await getApiBaseUrl();
   if (apiBaseUrl) {
     els.apiBaseUrlInput.value = apiBaseUrl;

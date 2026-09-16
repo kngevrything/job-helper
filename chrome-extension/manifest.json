@@ -29,7 +29,8 @@
     "*://*.myworkdayjobs.com/*",
     "*://jobs.lever.co/*",
     "*://*.ashbyhq.com/*",
-    "*://*.github.careers/*"
+    "*://*.github.careers/*",
+    "https://api.notion.com/*"
   ],
   "optional_host_permissions": [
     "http://localhost/*",

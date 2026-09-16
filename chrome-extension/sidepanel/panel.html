@@ -20,6 +20,18 @@
     />
     <button id="connectBtn">Connect</button>
     <p id="connectionStatus" class="status-text"></p>
+
+    <label for="notionApiKey">Notion API key</label>
+    <input
+      id="notionApiKey"
+      type="password"
+      placeholder="secret_… or ntn_…"
+      autocomplete="off"
+    />
+    <label for="notionDatabaseId">Notion database ID</label>
+    <input id="notionDatabaseId" type="text" autocomplete="off" />
+    <button id="notionSaveBtn">Save</button>
+    <p id="notionSettingsStatus" class="status-text"></p>
   </section>
 
   <main id="mainView">
@@ -57,7 +69,7 @@
 
       <label class="checkbox-row">
         <input id="createFiles" name="createFiles" type="checkbox" checked />
-        Create files (excelRowText / starterPromptText)
+        Create files (starterPromptText)
       </label>
 
       <div class="button-row">
@@ -70,15 +82,9 @@
     </form>
 
     <div id="resultMessage" class="result-message hidden"></div>
+    <p id="notionStatus" class="status-text hidden"></p>
 
     <div id="outputsSection" class="outputs-section hidden">
-      <div class="output-block">
-        <div class="output-header">
-          <label>Excel row</label>
-          <button type="button" class="copy-btn" data-target="excelRowOutput">Copy</button>
-        </div>
-        <textarea id="excelRowOutput" class="output-textarea" rows="2" readonly wrap="off"></textarea>
-      </div>
       <div class="output-block">
         <div class="output-header">
           <label>Starter prompt</label>
