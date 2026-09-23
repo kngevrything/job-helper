@@ -252,3 +252,66 @@ button {
   border-color: #a8dab5;
   color: #1e4620;
 }
+
+/* ---- Quick copy ---- */
+
+.quick-copy-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.quick-copy-row {
+  display: grid;
+  grid-template-columns: 1fr 2fr auto;
+  gap: 4px;
+}
+
+.qc-remove {
+  padding: 2px 8px;
+  color: #555;
+}
+
+.quick-copy-section {
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid #ddd;
+}
+
+.quick-copy-header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.quick-copy-heading {
+  font-weight: 600;
+}
+
+.info-tip {
+  color: #777;
+  font-size: 12px;
+  cursor: help;
+}
+
+.quick-copy-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.quick-copy-btn {
+  padding: 4px 10px;
+  font-size: 12px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.quick-copy-btn.copied {
+  background: #e6f4ea;
+  border-color: #a8dab5;
+  color: #1e4620;
+}

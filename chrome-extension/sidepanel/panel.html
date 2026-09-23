@@ -32,6 +32,14 @@
     <input id="notionDatabaseId" type="text" autocomplete="off" />
     <button id="notionSaveBtn">Save</button>
     <p id="notionSettingsStatus" class="status-text"></p>
+
+    <label>Quick copy buttons</label>
+    <div id="quickCopyEditor" class="quick-copy-editor"></div>
+    <div class="button-row">
+      <button type="button" id="quickCopyAddBtn">Add</button>
+      <button type="button" id="quickCopySaveBtn">Save</button>
+    </div>
+    <p id="quickCopyStatus" class="status-text"></p>
   </section>
 
   <main id="mainView">
@@ -92,6 +100,17 @@
         </div>
         <textarea id="starterPromptOutput" class="output-textarea" rows="8" readonly></textarea>
       </div>
+    </div>
+
+    <div class="quick-copy-section">
+      <div class="quick-copy-header">
+        <span class="quick-copy-heading">Quick copy</span>
+        <span class="info-tip" title="Add or edit quick copy buttons in Settings (⚙) at the top of the panel.">ⓘ</span>
+      </div>
+      <p id="quickCopyEmpty" class="status-text hidden">
+        Configure quick access text from the settings button above.
+      </p>
+      <div id="quickCopyButtons" class="quick-copy-buttons"></div>
     </div>
   </main>
 

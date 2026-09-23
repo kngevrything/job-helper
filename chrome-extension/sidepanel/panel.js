@@ -139,6 +139,12 @@ const els = {
   resultMessage: document.getElementById('resultMessage'),
   outputsSection: document.getElementById('outputsSection'),
   starterPromptOutput: document.getElementById('starterPromptOutput'),
+  quickCopyEditor: document.getElementById('quickCopyEditor'),
+  quickCopyAddBtn: document.getElementById('quickCopyAddBtn'),
+  quickCopySaveBtn: document.getElementById('quickCopySaveBtn'),
+  quickCopyStatus: document.getElementById('quickCopyStatus'),
+  quickCopyButtons: document.getElementById('quickCopyButtons'),
+  quickCopyEmpty: document.getElementById('quickCopyEmpty'),
 };
 
 let connected = false;
@@ -940,9 +946,102 @@ function attachAutoRescan() {
   });
 }
 
+// ---- Quick copy ---------------------------------------------------------
+// User-defined snippets (GitHub/LinkedIn/portfolio URLs, phone, etc.)
+// shown as buttons at the bottom of the panel. Stored in
+// chrome.storage.local like the other settings; edited in the settings
+// panel as label/text rows.
+
+async function getQuickCopies() {
+  const { quickCopies } = await chrome.storage.local.get('quickCopies');
+  return Array.isArray(quickCopies) ? quickCopies : [];
+}
+
+async function setQuickCopies(items) {
+  await chrome.storage.local.set({ quickCopies: items });
+}
+
+function renderQuickCopyButtons(items) {
+  els.quickCopyButtons.replaceChildren();
+  items.forEach(({ label, text }) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'quick-copy-btn';
+    btn.textContent = label;
+    btn.title = text;
+    btn.addEventListener('click', () => {
+      // copyExact restores whatever text the button has when clicked, so
+      // ignore clicks while "Copied!" is still showing or the label
+      // would get stuck as "Copied!".
+      if (btn.dataset.busy) return;
+      btn.dataset.busy = '1';
+      copyExact(text, btn);
+      setTimeout(() => delete btn.dataset.busy, 1600);
+    });
+    els.quickCopyButtons.appendChild(btn);
+  });
+  els.quickCopyEmpty.classList.toggle('hidden', items.length > 0);
+}
+
+function addQuickCopyRow(label = '', text = '') {
+  const row = document.createElement('div');
+  row.className = 'quick-copy-row';
+
+  const labelInput = document.createElement('input');
+  labelInput.type = 'text';
+  labelInput.className = 'qc-label';
+  labelInput.placeholder = 'Label';
+  labelInput.autocomplete = 'off';
+  labelInput.value = label;
+
+  const textInput = document.createElement('input');
+  textInput.type = 'text';
+  textInput.className = 'qc-text';
+  textInput.placeholder = 'Text to copy';
+  textInput.autocomplete = 'off';
+  textInput.value = text;
+
+  const removeBtn = document.createElement('button');
+  removeBtn.type = 'button';
+  removeBtn.className = 'qc-remove';
+  removeBtn.textContent = '✕';
+  removeBtn.title = 'Remove';
+  removeBtn.addEventListener('click', () => row.remove());
+
+  row.append(labelInput, textInput, removeBtn);
+  els.quickCopyEditor.appendChild(row);
+}
+
+els.quickCopyAddBtn.addEventListener('click', () => {
+  addQuickCopyRow();
+  els.quickCopyEditor.lastElementChild.querySelector('.qc-label').focus();
+});
+
+els.quickCopySaveBtn.addEventListener('click', async () => {
+  const items = [...els.quickCopyEditor.querySelectorAll('.quick-copy-row')]
+    .map((row) => {
+      const text = row.querySelector('.qc-text').value;
+      const label = row.querySelector('.qc-label').value.trim() || text.trim().slice(0, 24);
+      return { label, text };
+    })
+    .filter((item) => item.text.trim());
+  await setQuickCopies(items);
+  renderQuickCopyButtons(items);
+  els.quickCopyStatus.textContent = `Saved ${items.length} button${items.length === 1 ? '' : 's'}.`;
+});
+
+async function initQuickCopy() {
+  const items = await getQuickCopies();
+  els.quickCopyEditor.replaceChildren();
+  items.forEach(({ label, text }) => addQuickCopyRow(label, text));
+  renderQuickCopyButtons(items);
+}
+
 // ---- Init ---------------------------------------------------------------
 
 (async function init() {
+  await initQuickCopy();
+
   const { notionApiKey, notionDatabaseId } = await getNotionConfig();
   els.notionApiKeyInput.value = notionApiKey;
   els.notionDatabaseIdInput.value = notionDatabaseId;
