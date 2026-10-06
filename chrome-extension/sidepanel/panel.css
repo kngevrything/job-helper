@@ -139,6 +139,7 @@ button {
   border-color: #ffcc80;
   color: #663c00;
   font-weight: 600;
+  white-space: pre-line; /* one line per exact/possible match */
 }
 
 /* Distinct palette from .duplicate-notice and the scrape-confidence

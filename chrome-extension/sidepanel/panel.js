@@ -371,6 +371,31 @@ function duplicateNoticeText(data) {
     : `Already applied: ${statusText}.`;
 }
 
+// Company + title heads-up (possibleMatches from the API). Board
+// postings (LinkedIn, Indeed, ...) carry the board's ID, not the
+// company's requisition ID, so the exact jobId match above can't fire for
+// them. The API normalizes titles (case, punctuation, Sr/Jr) but keeps
+// team suffixes and levels significant, so this is "you might have
+// applied", not a verdict.
+const MAX_POSSIBLE_MATCH_LINES = 3;
+
+function possibleMatchLine(match) {
+  const appliedDate = match.createdAt
+    ? new Date(match.createdAt).toLocaleDateString()
+    : null;
+  return appliedDate
+    ? `Possibly applied: ${match.jobTitle} (${match.jobId}), ${match.status}, applied ${appliedDate}.`
+    : `Possibly applied: ${match.jobTitle} (${match.jobId}), ${match.status}.`;
+}
+
+function possibleMatchesText(matches) {
+  const lines = matches.slice(0, MAX_POSSIBLE_MATCH_LINES).map(possibleMatchLine);
+  if (matches.length > MAX_POSSIBLE_MATCH_LINES) {
+    lines.push(`+${matches.length - MAX_POSSIBLE_MATCH_LINES} more with the same company + title.`);
+  }
+  return lines.join('\n');
+}
+
 function showDuplicateNotice(text) {
   els.duplicateNotice.textContent = text;
   els.duplicateNotice.classList.remove('hidden');
@@ -381,8 +406,8 @@ function hideDuplicateNotice() {
   els.duplicateNotice.textContent = '';
 }
 
-async function checkDuplicate(company, jobId) {
-  if (!company || !jobId) {
+async function checkDuplicate({ company, jobId, jobTitle, jobUrl }) {
+  if (!company || (!jobId && !jobTitle)) {
     hideDuplicateNotice();
     return;
   }
@@ -394,22 +419,26 @@ async function checkDuplicate(company, jobId) {
   }
 
   let data = null;
+  let possibleMatches = [];
   try {
-    const url =
-      `${apiBaseUrl}/api/job-applications/check` +
-      `?company=${encodeURIComponent(company)}&jobId=${encodeURIComponent(jobId)}`;
+    const params = new URLSearchParams({ company });
+    if (jobId) params.set('jobId', jobId);
+    if (jobTitle) params.set('jobTitle', jobTitle);
+    if (jobUrl) params.set('jobUrl', jobUrl);
+    const url = `${apiBaseUrl}/api/job-applications/check?${params.toString()}`;
     const res = await fetch(url);
     if (res.ok) {
       const payload = await res.json().catch(() => null);
-      if (payload && payload.ok && payload.exists && payload.data) {
-        data = payload.data;
+      if (payload && payload.ok) {
+        if (payload.exists && payload.data) data = payload.data;
+        if (Array.isArray(payload.possibleMatches)) possibleMatches = payload.possibleMatches;
       }
     }
   } catch (err) {
     // API unreachable -- say nothing rather than guess.
   }
 
-  if (!data) {
+  if (!data && possibleMatches.length === 0) {
     hideDuplicateNotice();
     return;
   }
@@ -418,7 +447,12 @@ async function checkDuplicate(company, jobId) {
   // mid-typing (blur, debounce tick) while the same duplicate is still
   // in effect would otherwise hide and re-show this on every check,
   // which is what caused the form to visibly jump while typing.
-  const text = duplicateNoticeText(data);
+  const text = [
+    data ? duplicateNoticeText(data) : null,
+    possibleMatches.length ? possibleMatchesText(possibleMatches) : null,
+  ]
+    .filter(Boolean)
+    .join('\n');
   if (els.duplicateNotice.classList.contains('hidden') || els.duplicateNotice.textContent !== text) {
     showDuplicateNotice(text);
   }
@@ -435,20 +469,29 @@ async function checkDuplicate(company, jobId) {
 
 let duplicateCheckTimer = null;
 
+function currentCheckFields() {
+  return {
+    company: els.company.value.trim(),
+    jobId: els.jobId.value.trim(),
+    jobTitle: els.jobTitle.value.trim(),
+    jobUrl: els.jobUrl.value.trim(),
+  };
+}
+
 function scheduleDuplicateCheck() {
   clearTimeout(duplicateCheckTimer);
   duplicateCheckTimer = setTimeout(() => {
-    checkDuplicate(els.company.value.trim(), els.jobId.value.trim());
+    checkDuplicate(currentCheckFields());
   }, 600);
 }
 
 function duplicateCheckNow() {
   clearTimeout(duplicateCheckTimer);
-  checkDuplicate(els.company.value.trim(), els.jobId.value.trim());
+  checkDuplicate(currentCheckFields());
 }
 
 function attachDuplicateCheckTriggers() {
-  [els.company, els.jobId].forEach((el) => {
+  [els.company, els.jobId, els.jobTitle, els.jobUrl].forEach((el) => {
     el.addEventListener('input', scheduleDuplicateCheck);
     el.addEventListener('blur', duplicateCheckNow);
   });
@@ -687,7 +730,7 @@ async function runScrape(force = false) {
 
   populateForm(response);
   await saveDraft();
-  await checkDuplicate(response.company, response.jobId);
+  await checkDuplicate(currentCheckFields());
   await checkCompanyCasing(response.company, response.confidence);
   if (response.confidence === 'high') {
     showScrapeNotice('Captured from page structured data.', false);
@@ -1119,7 +1162,7 @@ async function initQuickCopy() {
   if (hasDraftContent) {
     populateForm(draft);
     els.createFiles.checked = draft.createFiles !== false;
-    await checkDuplicate(draft.company, draft.jobId);
+    await checkDuplicate(currentCheckFields());
     showScrapeNotice(
       'Restored your unsaved draft. Click "Rescan page" to pull fresh data instead, or "Clear" to start over.',
       true
