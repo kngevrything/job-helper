@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/db/mongoose";
 import { JobApplication, DUPLICATE_MATCH_COLLATION } from "@/models/JobApplication";
+import { isJobBoardUrl, jobTitlesMatch } from "@/lib/jobMatching";
 
 // Read-only sibling to the duplicate check already inside POST
 // /api/job-applications (findOne on { company, jobId }, backed by the
@@ -29,27 +30,82 @@ import { JobApplication, DUPLICATE_MATCH_COLLATION } from "@/models/JobApplicati
 // to show "already applied -- STATUS, applied <date>", nothing else
 // (folderPath/resumePath/coverLetterPath/excelRowText/starterPromptText
 // are irrelevant to that and would just be discarded by the client).
+// "Possibly already applied" (optional jobTitle / jobUrl params):
+// Board postings (LinkedIn, Indeed, ...) carry the board's ID, not the
+// company's requisition ID, so company+jobId can't match them. When
+// jobUrl is a job board and jobTitle is passed, this also returns every
+// application at the same
+// company (same case-insensitive collation) whose title matches after
+// normalizeJobTitle (case, punctuation, separators, Sr/Jr/SW/Mgr) --
+// team suffixes and levels stay significant. This is a heads-up, not a
+// duplicate verdict, so it never affects `exists`. Only runs for board
+// URLs: on a company careers page the jobId IS the company's ID, so the
+// exact match above is the right check and a title match is just noise
+// (e.g. a company with many same-titled reqs).
+//
+// Backward compatible: company + jobId alone behaves exactly as before
+// (plus isJobBoard: false and possibleMatches: []).
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const company = searchParams.get("company")?.trim();
     const jobId = searchParams.get("jobId")?.trim();
+    const jobTitle = searchParams.get("jobTitle")?.trim();
+    const jobUrl = searchParams.get("jobUrl")?.trim();
 
-    if (!company || !jobId) {
+    if (!company || (!jobId && !jobTitle)) {
       return NextResponse.json(
-        { ok: false, error: "company and jobId query params are both required." },
+        { ok: false, error: "company and at least one of jobId or jobTitle query params are required." },
         { status: 400 }
       );
     }
 
     await connectToDatabase();
 
-    const existing = await JobApplication.findOne(
-      { company, jobId },
-      { status: 1, createdAt: 1, endedAt: 1 }
-    )
-      .collation(DUPLICATE_MATCH_COLLATION)
-      .lean();
+    const existing = jobId
+      ? await JobApplication.findOne(
+          { company, jobId },
+          { status: 1, createdAt: 1, endedAt: 1 }
+        )
+          .collation(DUPLICATE_MATCH_COLLATION)
+          .lean()
+      : null;
+
+    const isJobBoard = isJobBoardUrl(jobUrl);
+
+    let possibleMatches: Array<{
+      _id: string;
+      jobId: string;
+      jobTitle: string;
+      jobUrl: string;
+      status: string;
+      createdAt: Date;
+    }> = [];
+
+    if (jobTitle && isJobBoard) {
+      const sameCompany = await JobApplication.find(
+        { company },
+        { jobId: 1, jobTitle: 1, jobUrl: 1, status: 1, createdAt: 1 }
+      )
+        .collation(DUPLICATE_MATCH_COLLATION)
+        .sort({ createdAt: -1 })
+        .lean();
+
+      possibleMatches = sameCompany
+        .filter(
+          (app) =>
+            jobTitlesMatch(app.jobTitle, jobTitle) &&
+            (!existing || String(app._id) !== String(existing._id))
+        )
+        .map((app) => ({
+          _id: String(app._id),
+          jobId: app.jobId,
+          jobTitle: app.jobTitle,
+          jobUrl: app.jobUrl,
+          status: app.status,
+          createdAt: app.createdAt,
+        }));
+    }
 
     return NextResponse.json({
       ok: true,
@@ -61,6 +117,8 @@ export async function GET(req: Request) {
             endedAt: existing.endedAt,
           }
         : null,
+      isJobBoard,
+      possibleMatches,
     });
   } catch (error) {
     console.error("GET /api/job-applications/check failed:", error);
