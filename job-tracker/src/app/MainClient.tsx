@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { APPLICATION_STATUSES, STATUS_GROUPS, isTerminalStatus } from "@/lib/status";
+import { APPLICATION_STATUSES, STATUS_GROUPS, isInterviewingStatus, isTerminalStatus } from "@/lib/status";
 import { ClearableInput, TypeaheadInput } from "@/lib/InputFieldComponents";
 import { CopyButton } from "./CopyButton";
+
+const INTERVIEWING_FILTER = "__interviewing";
 
 
 type Application = {
@@ -386,7 +388,10 @@ export default function MainClient() {
           .includes(search);
 
       const matchesStatus =
-        statusFilter === "All" || app.status === statusFilter;
+        statusFilter === "All" ||
+        (statusFilter === INTERVIEWING_FILTER
+          ? isInterviewingStatus(app.status)
+          : app.status === statusFilter);
 
       return matchesSearch && matchesStatus;
     });
@@ -411,9 +416,7 @@ export default function MainClient() {
   const summaryCounts = useMemo(() => ({
     total: applications.length,
     applied: applications.filter((app) => app.status === "Applied").length,
-    interviewing: applications.filter((app) =>
-      app.status.includes("Round") && !isTerminalStatus(app.status)
-    ).length,
+    interviewing: applications.filter((app) => isInterviewingStatus(app.status)).length,
     exited: applications.filter((app) => isTerminalStatus(app.status)).length,
   }), [applications]);
 
@@ -588,6 +591,7 @@ export default function MainClient() {
                 className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
               >
                 <option value="All">All Statuses</option>
+                <option value={INTERVIEWING_FILTER}>Actively Interviewing</option>
                 {APPLICATION_STATUSES.map((status) => (
                   <option key={status} value={status}>
                     {status}

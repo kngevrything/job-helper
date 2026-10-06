@@ -4,6 +4,7 @@ import {
   TERMINAL_STATUSES,
   STATUS_GROUPS,
   isTerminalStatus,
+  isInterviewingStatus,
 } from "@/lib/status";
 
 describe("status.ts", () => {
@@ -50,5 +51,25 @@ describe("status.ts", () => {
   it("STATUS_GROUPS flattens to exactly APPLICATION_STATUSES in the same order", () => {
     const flattened = STATUS_GROUPS.flatMap((g) => g.options);
     expect(flattened).toEqual(APPLICATION_STATUSES);
+  });
+
+  it("every status containing 'Exit' is terminal", () => {
+    for (const status of APPLICATION_STATUSES.filter((s) => s.includes("Exit"))) {
+      expect(isTerminalStatus(status)).toBe(true);
+    }
+  });
+
+  it("isInterviewingStatus excludes pre-interview and terminal statuses", () => {
+    for (const status of ["UNSET", "Tailoring", "Applied", ...TERMINAL_STATUSES]) {
+      expect(isInterviewingStatus(status)).toBe(false);
+    }
+    expect(isInterviewingStatus("Not A Real Status")).toBe(false);
+  });
+
+  it("isInterviewingStatus includes active rounds and Offer Received", () => {
+    expect(isInterviewingStatus("1st Round Scheduled")).toBe(true);
+    expect(isInterviewingStatus("3rd Round Done")).toBe(true);
+    expect(isInterviewingStatus("Final Round Scheduled")).toBe(true);
+    expect(isInterviewingStatus("Offer Received")).toBe(true);
   });
 });

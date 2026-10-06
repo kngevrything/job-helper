@@ -192,14 +192,50 @@ function updateSubmitEnabled() {
 // host_permissions, so no runtime permission request is needed the way
 // the Mongo API's variable origin requires one.
 
+// Read-only lookup used only to verify a key/database ID pair, never to
+// write anything -- retrieving the database confirms both that the token
+// is valid and that the integration has actually been connected to that
+// specific database in Notion (the most common setup mistake), which a
+// token-only check (e.g. /v1/users/me) wouldn't catch.
+async function testNotionConnection(apiKey, databaseId) {
+  const res = await fetch(
+    `https://api.notion.com/v1/databases/${encodeURIComponent(databaseId)}`,
+    {
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Notion-Version': '2022-06-28',
+      },
+    }
+  );
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`HTTP ${res.status}${text ? `: ${text}` : ''}`);
+  }
+}
+
 els.notionSaveBtn.addEventListener('click', async () => {
   const apiKey = els.notionApiKeyInput.value.trim();
   const databaseId = els.notionDatabaseIdInput.value.trim();
+
+  // Save first, regardless of what the test below finds -- so a failed
+  // test never costs you what you just typed.
   await setNotionConfig(apiKey, databaseId);
-  els.notionSettingsStatus.textContent =
-    apiKey && databaseId
-      ? 'Notion backup enabled.'
-      : 'Notion backup off (enter both an API key and a database ID to enable).';
+
+  if (!apiKey || !databaseId) {
+    els.notionSettingsStatus.textContent =
+      'Notion backup off (enter both an API key and a database ID to enable).';
+    return;
+  }
+
+  els.notionSettingsStatus.textContent = 'Saved. Testing connection…';
+  try {
+    await testNotionConnection(apiKey, databaseId);
+    els.notionSettingsStatus.textContent = 'Notion backup enabled. Connection verified.';
+  } catch (err) {
+    els.notionSettingsStatus.textContent =
+      `Saved, but couldn't verify: ${err.message}. Check the key, the database ID, and that the integration is connected to that database in Notion ("..." menu → Connections).`;
+  }
 });
 
 async function pushToNotion({ company, jobId, jobTitle, jobUrl }) {
@@ -1045,8 +1081,10 @@ async function initQuickCopy() {
   const { notionApiKey, notionDatabaseId } = await getNotionConfig();
   els.notionApiKeyInput.value = notionApiKey;
   els.notionDatabaseIdInput.value = notionDatabaseId;
+  // Reflects what's saved, not a freshly tested state -- avoids a network
+  // call to Notion every time the panel opens. Click Save & Test to verify.
   els.notionSettingsStatus.textContent =
-    notionApiKey && notionDatabaseId ? 'Notion backup enabled.' : '';
+    notionApiKey && notionDatabaseId ? 'Notion backup configured.' : '';
 
   const apiBaseUrl = await getApiBaseUrl();
   if (apiBaseUrl) {

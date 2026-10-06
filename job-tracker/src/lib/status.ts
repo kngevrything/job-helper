@@ -102,3 +102,15 @@ export const TERMINAL_STATUSES = [
 export function isTerminalStatus(status: string): boolean {
   return TERMINAL_STATUSES.includes(status as (typeof TERMINAL_STATUSES)[number])
 }
+
+// Statuses in the "General" group are pre-interview (UNSET, Tailoring, Applied).
+const PRE_INTERVIEW_STATUSES: readonly string[] =
+  STATUS_GROUPS.find((group) => group.label === "General")?.options ?? []
+
+export function isInterviewingStatus(status: string): boolean {
+  return (
+    APPLICATION_STATUSES.includes(status as (typeof APPLICATION_STATUSES)[number]) &&
+    !isTerminalStatus(status) &&
+    !PRE_INTERVIEW_STATUSES.includes(status)
+  )
+}
