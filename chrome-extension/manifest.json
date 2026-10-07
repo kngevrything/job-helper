@@ -30,6 +30,7 @@
     "*://jobs.lever.co/*",
     "*://*.ashbyhq.com/*",
     "*://*.github.careers/*",
+    "*://*.indeed.com/*",
     "https://api.notion.com/*"
   ],
   "optional_host_permissions": [
@@ -66,6 +67,11 @@
     {
       "matches": ["*://*.github.careers/*"],
       "js": ["content-scripts/github.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["*://*.indeed.com/*"],
+      "js": ["content-scripts/indeed.js"],
       "run_at": "document_idle"
     }
   ]

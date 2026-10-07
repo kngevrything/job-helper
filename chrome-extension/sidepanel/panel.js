@@ -317,6 +317,7 @@ function detectSite(url) {
   if (/(^|\.)lever\.co$/.test(host)) return 'lever';
   if (/(^|\.)ashbyhq\.com$/.test(host)) return 'ashby';
   if (/(^|\.)github\.careers$/.test(host)) return 'github';
+  if (/(^|\.)indeed\.com$/.test(host)) return 'indeed';
   return null;
 }
 
@@ -327,11 +328,14 @@ const CONTENT_SCRIPT_BY_SITE = {
   lever: 'content-scripts/lever.js',
   ashby: 'content-scripts/ashby.js',
   github: 'content-scripts/github.js',
+  indeed: 'content-scripts/indeed.js',
 };
 
-// Only LinkedIn has a description scraper wired up so far -- the
-// button stays hidden on every other/no site rather than showing and
-// then failing.
+// Sites whose content script answers GET_JOB_DESCRIPTION. The button
+// stays hidden on every other/no site rather than showing and then
+// failing.
+const DESCRIPTION_SITES = new Set(['linkedin', 'indeed']);
+
 function setDescriptionButtonVisible(visible) {
   els.copyDescriptionBtn.classList.toggle('hidden', !visible);
 }
@@ -672,7 +676,7 @@ async function runScrape(force = false) {
   hideCasingConflict();
 
   const site = detectSite(tab.url);
-  setDescriptionButtonVisible(site === 'linkedin');
+  setDescriptionButtonVisible(DESCRIPTION_SITES.has(site));
   if (!site) {
     // A genuinely different tab (the dedup check above already filtered
     // out same-tab refocus noise) that isn't one of the supported ATSes
@@ -682,7 +686,7 @@ async function runScrape(force = false) {
     // successful scrape already applies via populateForm() below.
     populateForm({ jobUrl: tab.url });
     showScrapeNotice(
-      'No scraper for this site yet (Greenhouse, LinkedIn, Workday, Lever, Ashby, GitHub so far). URL filled in, enter the rest manually.',
+      'No scraper for this site yet (Greenhouse, LinkedIn, Workday, Lever, Ashby, GitHub, Indeed so far). URL filled in, enter the rest manually.',
       true
     );
     await saveDraft();
@@ -833,7 +837,7 @@ els.copyDescriptionBtn.addEventListener('click', async () => {
   } catch (err) {
     // Same "content script not injected yet" recovery as runScrape():
     // the tab was open before the extension loaded/reloaded.
-    const injected = await injectContentScript(tab.id, 'linkedin');
+    const injected = await injectContentScript(tab.id, detectSite(tab.url));
     if (injected) {
       try {
         response = await chrome.tabs.sendMessage(tab.id, { type: 'GET_JOB_DESCRIPTION' });
@@ -1157,7 +1161,7 @@ async function initQuickCopy() {
 
   // runScrape() is what normally sets this, but the restored-draft branch
   // below returns without calling it, so it needs setting here too.
-  setDescriptionButtonVisible(Boolean(tab && tab.url && detectSite(tab.url) === 'linkedin'));
+  setDescriptionButtonVisible(Boolean(tab && tab.url && DESCRIPTION_SITES.has(detectSite(tab.url))));
 
   if (hasDraftContent) {
     populateForm(draft);

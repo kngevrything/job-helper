@@ -283,6 +283,43 @@ so the regex anchors on that instead of a fixed prefix. Confirmed
 against several real URLs found via search (ids like 4180, 5306,
 5611, 5441 across at least two different prefixes).
 
+### Indeed
+
+Matches every `*.indeed.com` page, since a posting can be open in
+three URL shapes, all handled:
+
+- standalone `/viewjob?jk=<id>`
+- search split view `/jobs?q=...&vjk=<id>`
+- signed-in homepage feed `/?vjk=<id>`
+
+`jobId` is the `jk` or `vjk` param. `jobUrl` is normalized to
+`{origin}/viewjob?jk=<id>`, which matches Indeed's own
+`<link rel="canonical">`.
+
+Confirmed live (2026-10) that Indeed's current layout dropped the
+long-documented selectors (`#jobDescriptionText`,
+`jobsearch-JobInfoHeader-title`, `inlineHeader-companyName`): none
+exist on either page shape. The new layout uses `data-testid`
+components instead: `vj-job-title` (title), `company-info-metadata`
+(first line is the company), and `vj-job-description-heading` (the
+"Full job description" h4, whose next sibling is the description).
+Those render identically on the standalone page and in the split-view
+pane, and update when you click another card.
+
+Only the standalone page emits JobPosting JSON-LD, and the split view's
+`document.title` is the search's title, not the job's. So unlike
+LinkedIn, the DOM testids are tried FIRST (they always reflect the job
+on screen), then JSON-LD, then the old selectors, then
+`document.title` (standalone page only, and it has no company in it).
+
+A testid hit with both title and company is reported as high
+confidence, so the casing correction won't silently rewrite the
+company, it'll offer the chip instead.
+
+**Not verified:** the signed-in homepage feed (`/?vjk=`). Logged out,
+that URL just shows the landing page, so it's assumed to use the same
+pane component as the search split view.
+
 ## Company casing correction
 
 Every scraper above ends up guessing company casing from a URL slug or
