@@ -134,6 +134,8 @@ const els = {
   createFiles: document.getElementById('createFiles'),
   rescanBtn: document.getElementById('rescanBtn'),
   copyDescriptionBtn: document.getElementById('copyDescriptionBtn'),
+  saveJdBtn: document.getElementById('saveJdBtn'),
+  saveJdStatus: document.getElementById('saveJdStatus'),
   clearDraftBtn: document.getElementById('clearDraftBtn'),
   submitBtn: document.getElementById('submitBtn'),
   resultMessage: document.getElementById('resultMessage'),
@@ -338,6 +340,8 @@ const DESCRIPTION_SITES = new Set(['linkedin', 'indeed']);
 
 function setDescriptionButtonVisible(visible) {
   els.copyDescriptionBtn.classList.toggle('hidden', !visible);
+  els.saveJdBtn.classList.toggle('hidden', !visible);
+  if (!visible) els.saveJdStatus.classList.add('hidden');
 }
 
 async function injectContentScript(tabId, site) {
@@ -857,6 +861,97 @@ els.copyDescriptionBtn.addEventListener('click', async () => {
   }
 
   await copyExact(response.description, els.copyDescriptionBtn);
+});
+
+// ---- Save JD for triage ---------------------------------------------------
+// Writes the job description to the webapp's JD inbox folder (POST
+// /api/jd-inbox) for Claude to triage later. No Mongo or Notion writes.
+// Company/title/URL come from the form (already scraped from this tab by
+// runScrape(), and fixable by hand); the description comes from the same
+// GET_JOB_DESCRIPTION scrape the Copy button uses. Salary is parsed from
+// the description server-side.
+
+let saveJdStatusTimer = null;
+
+function showSaveJdStatus(text, ok) {
+  clearTimeout(saveJdStatusTimer);
+  els.saveJdStatus.textContent = text;
+  els.saveJdStatus.style.color = ok ? '#1e7e34' : '#c0392b';
+  els.saveJdStatus.classList.remove('hidden');
+  saveJdStatusTimer = setTimeout(() => els.saveJdStatus.classList.add('hidden'), ok ? 5000 : 8000);
+}
+
+async function sendToTabWithInject(tab, message) {
+  try {
+    return await chrome.tabs.sendMessage(tab.id, message);
+  } catch (err) {
+    // Same "content script not injected yet" recovery as runScrape().
+    if (await injectContentScript(tab.id, detectSite(tab.url))) {
+      try {
+        return await chrome.tabs.sendMessage(tab.id, message);
+      } catch (retryErr) {
+        return null;
+      }
+    }
+    return null;
+  }
+}
+
+els.saveJdBtn.addEventListener('click', async () => {
+  const tab = await getSourceTab();
+  const board = tab && tab.url ? detectSite(tab.url) : null;
+  if (!tab || !DESCRIPTION_SITES.has(board)) {
+    showSaveJdStatus('Not a LinkedIn or Indeed job page.', false);
+    return;
+  }
+
+  const apiBaseUrl = await getApiBaseUrl();
+  if (!apiBaseUrl || !(await hasApiPermission(apiBaseUrl))) {
+    showSaveJdStatus('Not connected to an API. Set it up in settings (⚙) first.', false);
+    return;
+  }
+
+  const company = els.company.value.trim();
+  const title = els.jobTitle.value.trim();
+  if (!company || !title) {
+    showSaveJdStatus('Company and job title are needed. Fill them in above.', false);
+    return;
+  }
+
+  els.saveJdBtn.disabled = true;
+  try {
+    const response = await sendToTabWithInject(tab, { type: 'GET_JOB_DESCRIPTION' });
+    if (!response || !response.ok || !response.description) {
+      showSaveJdStatus('No job description found on this page.', false);
+      return;
+    }
+
+    const body = { company, title, board, description: response.description };
+    const url = els.jobUrl.value.trim();
+    if (url) body.url = url;
+
+    let res;
+    try {
+      res = await fetch(`${apiBaseUrl}/api/jd-inbox`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+    } catch (err) {
+      showSaveJdStatus(`Could not reach ${apiBaseUrl}. Is the server running?`, false);
+      return;
+    }
+
+    const payload = await res.json().catch(() => null);
+    if (res.status === 201 && payload && payload.filename) {
+      showSaveJdStatus(`Saved ${payload.filename}`, true);
+    } else {
+      const reason = (payload && payload.error) || `HTTP ${res.status}`;
+      showSaveJdStatus(`Save failed: ${reason}`, false);
+    }
+  } finally {
+    els.saveJdBtn.disabled = false;
+  }
 });
 
 // ---- Fetching generated outputs after create -----------------------------

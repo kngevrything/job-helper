@@ -261,14 +261,31 @@ function tryDescriptionByHeadingText() {
   }
   if (!sectionText) return null;
 
+  // /jobs/view/ permalink layout (confirmed live, 2026-10): the section
+  // also holds a "… more" expand button and a "Benefits found in job
+  // post" block after the description. The description text itself sits
+  // in a data-testid="expandable-text-box" span (full text even while
+  // visually collapsed), so prefer that when it's there.
+  const textBox = container.querySelector('[data-testid="expandable-text-box"]');
+  if (textBox && (textBox.innerText || '').trim().length > 40) {
+    return stripExpandButtonText(textBox.innerText.replace(/\n{3,}/g, '\n\n').trim());
+  }
+
   // The matched container's text starts with the heading itself
   // (that's how we found it) -- strip that off so the copied text is
   // just the description, not "About the job\n\n<description>".
   if (sectionText.toLowerCase().startsWith(headingText.toLowerCase())) {
     sectionText = sectionText.slice(headingText.length).trim();
   }
-  sectionText = sectionText.replace(/\n{3,}/g, '\n\n').trim();
+  sectionText = stripExpandButtonText(sectionText.replace(/\n{3,}/g, '\n\n').trim());
   return sectionText || null;
+}
+
+// Backstop for any layout where an expand/collapse toggle's label ends up
+// inside the captured container: drop a trailing "… more" / "Show more" /
+// "See more" (or "less") line.
+function stripExpandButtonText(text) {
+  return text.replace(/\n\s*(?:…|\.\.\.)?\s*(?:(?:show|see)\s+)?(?:more|less)\s*$/i, '').trim();
 }
 
 function tryDescriptionDom() {
