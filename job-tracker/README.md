@@ -112,6 +112,7 @@ See `.env.example` for the full list with descriptions. Summary:
 | `BASE_RESUME_FILENAME`       | Filename of your base resume template, expected inside the applications folder.       |
 | `BASE_COVER_LETTER_FILENAME` | Filename of your base cover letter template, expected inside the applications folder. |
 | `APPLICANT_NAME`             | Your name, used in generated filenames (e.g. `Jane Smith Resume 12345.docx`).         |
+| `JD_INBOX_DIR`               | Folder the Chrome extension's "Save JD for triage" button writes job descriptions to (`POST /api/jd-inbox`). Created if missing. |
 
 ## Known limitations
 
