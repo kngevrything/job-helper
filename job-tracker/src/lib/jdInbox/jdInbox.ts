@@ -112,3 +112,17 @@ export async function writeJdInboxFile(dir: string, input: JdInboxInput, now = n
   }
   throw new Error("Too many files with the same name in the JD inbox.");
 }
+
+// Files awaiting triage: every .md in the inbox except "_"-prefixed ones
+// (Claude skips those). A missing folder just means nothing saved yet.
+export async function countJdInboxFiles(dir: string) {
+  try {
+    const entries = await fs.readdir(dir, { withFileTypes: true });
+    return entries.filter(
+      (e) => e.isFile() && e.name.toLowerCase().endsWith(".md") && !e.name.startsWith("_")
+    ).length;
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") return 0;
+    throw err;
+  }
+}

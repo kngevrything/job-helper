@@ -321,3 +321,9 @@ button {
   margin: -4px 0 10px;
   word-break: break-all;
 }
+
+.jd-inbox-count {
+  margin-top: 12px;
+  padding-top: 8px;
+  border-top: 1px solid #e0e0e0;
+}

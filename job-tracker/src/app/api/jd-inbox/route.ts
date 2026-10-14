@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
-import { writeJdInboxFile } from "@/lib/jdInbox/jdInbox";
+import { countJdInboxFiles, writeJdInboxFile } from "@/lib/jdInbox/jdInbox";
 
 // POST /api/jd-inbox -- the Chrome extension's "Save JD for triage"
 // button. Writes one markdown file into JD_INBOX_DIR for Claude to triage
 // later. Deliberately no database or Notion writes.
+// GET /api/jd-inbox -- how many files are awaiting triage, for the
+// extension's read-out.
 
-const BOARDS = new Set(["linkedin", "indeed"]);
+// "other" = text the user highlighted on a site with no scraper.
+const BOARDS = new Set(["linkedin", "indeed", "other"]);
 
 function str(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
@@ -38,7 +41,7 @@ export async function POST(req: Request) {
     return NextResponse.json(
       {
         ok: false,
-        error: "company, title, description and board (linkedin or indeed) are required.",
+        error: "company, title, description and board (linkedin, indeed or other) are required.",
       },
       { status: 400 }
     );
@@ -58,6 +61,26 @@ export async function POST(req: Request) {
     console.error("POST /api/jd-inbox failed:", error);
     return NextResponse.json(
       { ok: false, error: "Failed to write the JD inbox file." },
+      { status: 500 }
+    );
+  }
+}
+
+export async function GET() {
+  const dir = process.env.JD_INBOX_DIR?.trim();
+  if (!dir) {
+    return NextResponse.json(
+      { ok: false, error: "JD_INBOX_DIR is not set in .env.local." },
+      { status: 500 }
+    );
+  }
+
+  try {
+    return NextResponse.json({ ok: true, count: await countJdInboxFiles(dir) });
+  } catch (error) {
+    console.error("GET /api/jd-inbox failed:", error);
+    return NextResponse.json(
+      { ok: false, error: "Failed to read the JD inbox folder." },
       { status: 500 }
     );
   }

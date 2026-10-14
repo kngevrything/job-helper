@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import fs from "fs/promises";
 import os from "os";
 import path from "path";
-import { buildBaseName, buildContent, parseSalary, writeJdInboxFile } from "@/lib/jdInbox/jdInbox";
+import { buildBaseName, buildContent, countJdInboxFiles, parseSalary, writeJdInboxFile } from "@/lib/jdInbox/jdInbox";
 
 const NOW = new Date(2026, 9, 8, 9, 5, 7);
 
@@ -77,5 +77,28 @@ describe("writeJdInboxFile", () => {
       "20261008-090507_x_y-2.md",
       "20261008-090507_x_y-3.md",
     ]);
+  });
+});
+
+describe("countJdInboxFiles", () => {
+  let dir: string;
+  beforeEach(async () => {
+    dir = await fs.mkdtemp(path.join(os.tmpdir(), "jd-count-"));
+  });
+  afterEach(async () => {
+    await fs.rm(dir, { recursive: true, force: true });
+  });
+
+  it("counts .md files, skipping _-prefixed files, other types and folders", async () => {
+    await fs.writeFile(path.join(dir, "20261008-1_a_b.md"), "x");
+    await fs.writeFile(path.join(dir, "20261008-2_c_d.md"), "x");
+    await fs.writeFile(path.join(dir, "_processed.md"), "x");
+    await fs.writeFile(path.join(dir, "notes.txt"), "x");
+    await fs.mkdir(path.join(dir, "sub.md"));
+    expect(await countJdInboxFiles(dir)).toBe(2);
+  });
+
+  it("returns 0 when the folder does not exist", async () => {
+    expect(await countJdInboxFiles(path.join(dir, "missing"))).toBe(0);
   });
 });

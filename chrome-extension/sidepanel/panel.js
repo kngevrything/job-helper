@@ -135,7 +135,9 @@ const els = {
   rescanBtn: document.getElementById('rescanBtn'),
   copyDescriptionBtn: document.getElementById('copyDescriptionBtn'),
   saveJdBtn: document.getElementById('saveJdBtn'),
+  saveSelectionBtn: document.getElementById('saveSelectionBtn'),
   saveJdStatus: document.getElementById('saveJdStatus'),
+  jdInboxCount: document.getElementById('jdInboxCount'),
   clearDraftBtn: document.getElementById('clearDraftBtn'),
   submitBtn: document.getElementById('submitBtn'),
   resultMessage: document.getElementById('resultMessage'),
@@ -169,6 +171,7 @@ els.connectBtn.addEventListener('click', async () => {
     if (granted) {
       await setApiBaseUrl(baseUrl);
       connected = true;
+      refreshJdInboxCount();
       els.connectionStatus.textContent = `Connected to ${baseUrl}`;
       els.notConnectedNotice.classList.add('hidden');
       updateSubmitEnabled();
@@ -341,7 +344,8 @@ const DESCRIPTION_SITES = new Set(['linkedin', 'indeed']);
 function setDescriptionButtonVisible(visible) {
   els.copyDescriptionBtn.classList.toggle('hidden', !visible);
   els.saveJdBtn.classList.toggle('hidden', !visible);
-  if (!visible) els.saveJdStatus.classList.add('hidden');
+  // Where the full JD scraper works, the selection fallback is redundant.
+  els.saveSelectionBtn.classList.toggle('hidden', visible);
 }
 
 async function injectContentScript(tabId, site) {
@@ -926,33 +930,154 @@ els.saveJdBtn.addEventListener('click', async () => {
       return;
     }
 
-    const body = { company, title, board, description: response.description };
-    const url = els.jobUrl.value.trim();
-    if (url) body.url = url;
-
-    let res;
-    try {
-      res = await fetch(`${apiBaseUrl}/api/jd-inbox`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-    } catch (err) {
-      showSaveJdStatus(`Could not reach ${apiBaseUrl}. Is the server running?`, false);
-      return;
-    }
-
-    const payload = await res.json().catch(() => null);
-    if (res.status === 201 && payload && payload.filename) {
-      showSaveJdStatus(`Saved ${payload.filename}`, true);
-    } else {
-      const reason = (payload && payload.error) || `HTTP ${res.status}`;
-      showSaveJdStatus(`Save failed: ${reason}`, false);
-    }
+    await postToJdInbox(apiBaseUrl, { company, title, board, description: response.description });
   } finally {
     els.saveJdBtn.disabled = false;
   }
 });
+
+// Shared by both save buttons: adds the form's URL, posts, reports.
+async function postToJdInbox(apiBaseUrl, body) {
+  const url = els.jobUrl.value.trim();
+  if (url) body.url = url;
+
+  let res;
+  try {
+    res = await fetch(`${apiBaseUrl}/api/jd-inbox`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+  } catch (err) {
+    showSaveJdStatus(`Could not reach ${apiBaseUrl}. Is the server running?`, false);
+    return;
+  }
+
+  const payload = await res.json().catch(() => null);
+  if (res.status === 201 && payload && payload.filename) {
+    showSaveJdStatus(`Saved ${payload.filename}`, true);
+    refreshJdInboxCount();
+  } else {
+    const reason = (payload && payload.error) || `HTTP ${res.status}`;
+    showSaveJdStatus(`Save failed: ${reason}`, false);
+  }
+}
+
+// ---- Save selected text for triage ------------------------------------
+// For sites with no scraper (or when a scraper misses): the description is
+// whatever text is highlighted on the page. Reading the selection needs
+// host access to that site; LinkedIn/Indeed etc. already have it from the
+// manifest, anything else is requested per origin (optional_host_permissions)
+// the first time, the same pattern as the API URL above. The request has
+// to run inside the click's user gesture, so it uses the last-scanned URL
+// (kept current by runScrape()) instead of awaiting a tab lookup first.
+
+async function readSelection(tabId) {
+  const grab = () => String(window.getSelection ? window.getSelection() : '');
+  let results;
+  try {
+    // allFrames: some ATS pages render the posting inside an iframe.
+    results = await chrome.scripting.executeScript({ target: { tabId, allFrames: true }, func: grab });
+  } catch (err) {
+    results = await chrome.scripting.executeScript({ target: { tabId }, func: grab });
+  }
+  return (results || [])
+    .map((r) => (typeof r.result === 'string' ? r.result.trim() : ''))
+    .sort((a, b) => b.length - a.length)[0] || '';
+}
+
+els.saveSelectionBtn.addEventListener('click', async () => {
+  const company = els.company.value.trim();
+  const title = els.jobTitle.value.trim();
+  if (!company || !title) {
+    showSaveJdStatus('Company and job title are needed. Fill them in above.', false);
+    return;
+  }
+
+  let pattern = null;
+  try {
+    const u = new URL(lastScrapedUrl || '');
+    if (u.protocol === 'http:' || u.protocol === 'https:') pattern = `${u.protocol}//${u.host}/*`;
+  } catch {
+    pattern = null;
+  }
+  if (!pattern) {
+    showSaveJdStatus("Can't read selections on this page.", false);
+    return;
+  }
+
+  let granted = false;
+  try {
+    granted = await chrome.permissions.request({ origins: [pattern] });
+  } catch (err) {
+    granted = false;
+  }
+  if (!granted) {
+    showSaveJdStatus('Site access not granted, so the selection could not be read.', false);
+    return;
+  }
+
+  const apiBaseUrl = await getApiBaseUrl();
+  if (!apiBaseUrl || !(await hasApiPermission(apiBaseUrl))) {
+    showSaveJdStatus('Not connected to an API. Set it up in settings (⚙) first.', false);
+    return;
+  }
+
+  const tab = await getSourceTab();
+  if (!tab || !tab.url || originPatternFor(tab.url) !== pattern) {
+    showSaveJdStatus('The tab changed. Click again.', false);
+    return;
+  }
+
+  els.saveSelectionBtn.disabled = true;
+  try {
+    let description = '';
+    try {
+      description = await readSelection(tab.id);
+    } catch (err) {
+      showSaveJdStatus("Couldn't read this page's selection.", false);
+      return;
+    }
+    if (!description) {
+      showSaveJdStatus('Nothing selected. Highlight the job description first.', false);
+      return;
+    }
+
+    const site = detectSite(tab.url);
+    const board = DESCRIPTION_SITES.has(site) ? site : 'other';
+    await postToJdInbox(apiBaseUrl, { company, title, board, description });
+  } finally {
+    els.saveSelectionBtn.disabled = false;
+  }
+});
+
+// JD inbox read-out at the bottom of the panel. Claude removes files as it
+// triages them, outside the extension, so this re-checks whenever the
+// panel opens, after a save, and on tab switch / window focus (the same
+// events that trigger auto-rescan). Hidden when not connected.
+async function refreshJdInboxCount() {
+  const apiBaseUrl = await getApiBaseUrl();
+  if (!apiBaseUrl || !(await hasApiPermission(apiBaseUrl))) {
+    els.jdInboxCount.classList.add('hidden');
+    return;
+  }
+
+  let text;
+  try {
+    const res = await fetch(`${apiBaseUrl}/api/jd-inbox`);
+    const payload = await res.json().catch(() => null);
+    if (res.ok && payload && typeof payload.count === 'number') {
+      const n = payload.count;
+      text = n === 0 ? 'No JDs awaiting triage' : `${n} JD${n === 1 ? '' : 's'} awaiting triage`;
+    } else {
+      text = `JD inbox: ${(payload && payload.error) || `HTTP ${res.status}`}`;
+    }
+  } catch (err) {
+    text = 'JD inbox: server unreachable';
+  }
+  els.jdInboxCount.textContent = text;
+  els.jdInboxCount.classList.remove('hidden');
+}
 
 // ---- Fetching generated outputs after create -----------------------------
 // The API doesn't return excelRowText/starterPromptText from the POST
@@ -1105,6 +1230,7 @@ els.form.addEventListener('submit', async (e) => {
 
 const autoRescanDebounced = debounce(() => {
   runScrape();
+  refreshJdInboxCount();
 }, 400);
 
 function attachAutoRescan() {
@@ -1244,6 +1370,7 @@ async function initQuickCopy() {
     els.settingsPanel.classList.remove('hidden');
   }
   updateSubmitEnabled();
+  refreshJdInboxCount();
 
   const draft = await loadDraft();
   const tab = await getSourceTab();
