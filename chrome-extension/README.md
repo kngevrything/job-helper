@@ -5,7 +5,7 @@ being worked out. Use of the Chrome Extension is not advised at this
 point.
 
 Captures job applications from Greenhouse, LinkedIn, Workday, Lever,
-Ashby, GitHub (github.careers), and Indeed job postings and writes them into
+Ashby, GitHub (github.careers), Indeed, and Jobright job postings and writes them into
 your `job-tracker` app.
 The update flow, a generic fallback scraper, and
 client-side starterPromptText regeneration aren't built yet, this
@@ -48,7 +48,7 @@ step 5 below.
    **Save** to enable the Notion backup copy described below; leave
    both blank to skip it.
 6. Open a Greenhouse, LinkedIn, Workday, Lever, Ashby, GitHub
-   (github.careers), or Indeed job posting and click the extension icon (or
+   (github.careers), Indeed, or Jobright job posting and click the extension icon (or
    switch to a tab that already has one open).
    It should auto-scrape and pre-fill the form. If it doesn't, see
    "What works right now" below for which sites are supported.
@@ -80,6 +80,11 @@ step 5 below.
   - **Indeed** works on the standalone `/viewjob?jk=` page and in the
     search/homepage split view (`?vjk=`). Copy Job Description works
     here too, same as LinkedIn.
+  - **Jobright** works on `jobright.ai/jobs/info/<id>` pages. Copy Job
+    Description and Save JD work, but the description is Jobright's own
+    rewrite of the posting, not the employer's original text. Salary is
+    sent to the JD inbox from Jobright's structured data. Only verified
+    against one real posting, see `docs/notes.md`.
   - On any unsupported site, the form is left blank for manual entry:
     nothing blocks you from typing a capture in by hand.
 - The panel automatically rescans when you switch tabs or windows. If
@@ -126,6 +131,7 @@ content-scripts/lever.js       Lever scraper
 content-scripts/ashby.js       Ashby scraper
 content-scripts/github.js      GitHub (github.careers) scraper
 content-scripts/indeed.js      Indeed scraper
+content-scripts/jobright.js    Jobright scraper
 sidepanel/panel.html           Panel markup: settings + capture form
 sidepanel/panel.css            Styling
 sidepanel/panel.js             Permission handling, scrape request, draft autosave, duplicate/casing checks, submit logic

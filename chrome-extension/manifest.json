@@ -31,6 +31,7 @@
     "*://*.ashbyhq.com/*",
     "*://*.github.careers/*",
     "*://*.indeed.com/*",
+    "*://*.jobright.ai/*",
     "https://api.notion.com/*"
   ],
   "optional_host_permissions": [
@@ -72,6 +73,11 @@
     {
       "matches": ["*://*.indeed.com/*"],
       "js": ["content-scripts/indeed.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["*://*.jobright.ai/*"],
+      "js": ["content-scripts/jobright.js"],
       "run_at": "document_idle"
     }
   ]

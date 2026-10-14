@@ -323,6 +323,7 @@ function detectSite(url) {
   if (/(^|\.)ashbyhq\.com$/.test(host)) return 'ashby';
   if (/(^|\.)github\.careers$/.test(host)) return 'github';
   if (/(^|\.)indeed\.com$/.test(host)) return 'indeed';
+  if (/(^|\.)jobright\.ai$/.test(host)) return 'jobright';
   return null;
 }
 
@@ -334,12 +335,13 @@ const CONTENT_SCRIPT_BY_SITE = {
   ashby: 'content-scripts/ashby.js',
   github: 'content-scripts/github.js',
   indeed: 'content-scripts/indeed.js',
+  jobright: 'content-scripts/jobright.js',
 };
 
 // Sites whose content script answers GET_JOB_DESCRIPTION. The button
 // stays hidden on every other/no site rather than showing and then
 // failing.
-const DESCRIPTION_SITES = new Set(['linkedin', 'indeed']);
+const DESCRIPTION_SITES = new Set(['linkedin', 'indeed', 'jobright']);
 
 function setDescriptionButtonVisible(visible) {
   els.copyDescriptionBtn.classList.toggle('hidden', !visible);
@@ -694,7 +696,7 @@ async function runScrape(force = false) {
     // successful scrape already applies via populateForm() below.
     populateForm({ jobUrl: tab.url });
     showScrapeNotice(
-      'No scraper for this site yet (Greenhouse, LinkedIn, Workday, Lever, Ashby, GitHub, Indeed so far). URL filled in, enter the rest manually.',
+      'No scraper for this site yet (Greenhouse, LinkedIn, Workday, Lever, Ashby, GitHub, Indeed, Jobright so far). URL filled in, enter the rest manually.',
       true
     );
     await saveDraft();
@@ -873,7 +875,8 @@ els.copyDescriptionBtn.addEventListener('click', async () => {
 // Company/title/URL come from the form (already scraped from this tab by
 // runScrape(), and fixable by hand); the description comes from the same
 // GET_JOB_DESCRIPTION scrape the Copy button uses. Salary is parsed from
-// the description server-side.
+// the description server-side, unless the scraper returns one (Jobright
+// has structured salary but none in its description text).
 
 let saveJdStatusTimer = null;
 
@@ -905,7 +908,7 @@ els.saveJdBtn.addEventListener('click', async () => {
   const tab = await getSourceTab();
   const board = tab && tab.url ? detectSite(tab.url) : null;
   if (!tab || !DESCRIPTION_SITES.has(board)) {
-    showSaveJdStatus('Not a LinkedIn or Indeed job page.', false);
+    showSaveJdStatus('Not a LinkedIn, Indeed or Jobright job page.', false);
     return;
   }
 
@@ -930,7 +933,9 @@ els.saveJdBtn.addEventListener('click', async () => {
       return;
     }
 
-    await postToJdInbox(apiBaseUrl, { company, title, board, description: response.description });
+    const body = { company, title, board, description: response.description };
+    if (response.salary) body.salary = response.salary;
+    await postToJdInbox(apiBaseUrl, body);
   } finally {
     els.saveJdBtn.disabled = false;
   }

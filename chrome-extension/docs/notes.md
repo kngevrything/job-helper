@@ -320,6 +320,48 @@ company, it'll offer the chip instead.
 that URL just shows the landing page, so it's assumed to use the same
 pane component as the search split view.
 
+### Jobright
+
+Job pages are `jobright.ai/jobs/info/<24-hex id>`, usually reached
+from Jobright's alert emails with `utm_*`/`imp_id` tracking params.
+`jobId` is the hex id; `jobUrl` drops the params and matches the
+page's `<link rel="canonical">`.
+
+A plain HTTP fetch gets a JavaScript "Security check" interstitial,
+so nothing here was verifiable server-side. Checked live (2026-10) in
+a real browser against one posting: title and company agree across
+all four tiers, which run in this order:
+
+1. DOM: `h1[class*="index_job-title"]` and
+   `[class*="index_company-name"]`. The class suffixes are CSS-module
+   hashes, so selectors match the stable prefix only.
+2. `__NEXT_DATA__` `props.pageProps.dataSource.jobResult.jobTitle` and
+   `.companyResult.companyName`.
+3. JSON-LD JobPosting. Its `title` can carry a `[Remote] ` prefix,
+   which is stripped.
+4. `document.title`: `"{Title} @ {Company} | Jobright.ai"`.
+
+JSON-LD and `__NEXT_DATA__` are only used when their job id matches
+the URL's. Whether Jobright swaps jobs client-side without refreshing
+them is unknown; the guard keeps a stale job from being reported.
+
+**Description:** from the JSON-LD `description`. It is NOT the
+employer's original JD: Jobright rewrites every posting into its own
+Responsibilities / Qualification / Benefits / Company sections (plus
+H1B history). The original only exists on the company site behind
+Jobright's Apply button. Good enough for triage, but don't treat
+wording in it as the company's.
+
+**Salary:** the description text has none, so the webapp's
+`parseSalary` would come back "unknown". The content script returns
+`salary` alongside the description (`jobResult.salaryDesc`, e.g.
+`$300K/yr - $385K/yr`, falling back to JSON-LD `baseSalary`), and Save
+JD passes it to `/api/jd-inbox`.
+
+**Not verified:** a second posting, a posting with no salary, and
+signed-in list/recommendation pages (off `/jobs/info/`, the scraper
+returns blank fields rather than guessing).
+
 ## Company casing correction
 
 Every scraper above ends up guessing company casing from a URL slug or
