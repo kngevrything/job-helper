@@ -437,3 +437,74 @@ freeform company name with no other context.
   (both the scrape-time one and the POST's 409) just tells you it's a
   duplicate; ideally this would link to the existing record. Can wire
   that up once the update flow exists to jump to it.
+
+### Glassdoor
+
+Matches `*.glassdoor.com` and `*.glassdoor.co.in`. `.co.in` is the
+India site: the job alert emails link there even for US jobs (likely
+the account's country setting). Drop it from the manifest and
+`detectSite()` once alerts point at `.com`.
+
+Cloudflare blocks automated browsers on Glassdoor ("Humans only"), so
+nothing was checked live. Built and tested (2026-10) against three
+pages saved from a real Chrome session: two `/job-listing/` alert
+pages and one `/Job/...SRCH...` search split view.
+
+- **Title:** `h1[id^="jd-job-title-"]`. The search page has a second
+  h1 (the search heading), so match by id, not tag.
+- **Company:** `[class*="EmployerProfile_employerNameHeading"]` inside
+  `[data-test="job-details-header"]`. Class suffixes are CSS-module
+  hashes, so selectors match the prefix.
+- **jobId:** from the h1 id (`jd-job-title-<id>`), which is right in
+  both page shapes, then the `jl`/`jobListingId` param, then the
+  selected card's `data-jobid`.
+- **jobUrl:** `https://www.glassdoor.com/job-listing/<slug>?jl=<id>`.
+  Glassdoor's own ItemList JSON-LD uses the `.com` host even when the
+  page came from `.co.in`. On the search page the slug comes from that
+  ItemList (server-rendered jobs only); a job clicked client-side falls
+  back to `/Job/<search>.htm?jl=<id>`, the format Glassdoor's own
+  `serpUrlForJobListing` uses. Not verified that either link opens on
+  `.com`, since Glassdoor can't be loaded here.
+- **Description:** `[class*="JobDetails_jobDescription"]`. It holds the
+  full text even while collapsed (matched JSON-LD's last line). JSON-LD
+  JobPosting is the fallback, standalone page only.
+- **Company mismatch:** one posting showed "Paladin Technologies" in
+  the header and page title but "Bosch Building Technologies LLC" in
+  JSON-LD `hiringOrganization` and the URL slug. The header wins (it's
+  what you see), but confidence drops to `medium` so the panel flags
+  it. "FormFactor" vs "FormFactor, Inc." counts as the same.
+- **Salary:** not scraped. On `.co.in` the job cards show salaries
+  converted to INR, and the detail pane had none for these postings.
+- The API's `/api/jd-inbox` board allow-list needed `glassdoor` added.
+
+### Monster
+
+Checked live (2026-10) in the built-in browser, no bot wall. Two page
+shapes, same job view component (`[data-testid="svx-job-view-wrapper"]`):
+`/jobs/search?q=...&id=<uuid>` (alert emails, job in a right-hand
+pane) and `/job-openings/<slug>--<uuid>` (standalone).
+
+- **Split view needs width.** At ~830px the search page shows only the
+  list, no pane. At 1440px the pane appears. Nothing to scrape without
+  it.
+- **Title / company:** `[data-testid="jobTitle"]` (h2 in the pane, h1
+  standalone) and `[data-testid="company"]`, scoped to the job view so
+  the cards' identical test ids don't match.
+- **jobId gotcha:** clicking another card does NOT update the URL's
+  `id`, and the card buttons' `aria-pressed` stays on the first job.
+  Only the article's `card-selected` class moves. So the id comes from
+  the card whose button `aria-label` is `"<title> at <company>"`, then
+  the selected card's `data-job-id`, and the URL `id` only as a last
+  resort (confidence drops to `medium`). Standalone: JSON-LD
+  `identifier.value`, then the uuid in the path.
+- **jobUrl:** the card's own `/job-openings/<slug>--<uuid>` link. The
+  slug includes the location (`...-charleston-sc--<uuid>`), and a
+  guessed slug returns 410 Gone, so it's never built by hand.
+- **Description:** `[data-testid="svx-description-container-inner"]`,
+  full text (the pane's "+ show more" belongs to the skills widget).
+  At narrow width the standalone page collapses it and a trailing
+  "Show more" label is stripped. JSON-LD fallback, standalone only.
+- **Salary:** the facts table's `Salary` row
+  (`$160,000–$200,000 Per Year`) when present. Not every posting has
+  one, and the standalone JSON-LD had no `baseSalary`.
+- The API's `/api/jd-inbox` board allow-list needed `monster` added.

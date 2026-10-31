@@ -8,7 +8,7 @@ import { countJdInboxFiles, writeJdInboxFile } from "@/lib/jdInbox/jdInbox";
 // extension's read-out.
 
 // "other" = text the user highlighted on a site with no scraper.
-const BOARDS = new Set(["linkedin", "indeed", "jobright", "other"]);
+const BOARDS = new Set(["linkedin", "indeed", "jobright", "glassdoor", "monster", "other"]);
 
 function str(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
@@ -41,7 +41,7 @@ export async function POST(req: Request) {
     return NextResponse.json(
       {
         ok: false,
-        error: "company, title, description and board (linkedin, indeed, jobright or other) are required.",
+        error: "company, title, description and board (linkedin, indeed, jobright, glassdoor, monster or other) are required.",
       },
       { status: 400 }
     );

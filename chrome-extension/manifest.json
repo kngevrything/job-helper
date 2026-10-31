@@ -32,6 +32,9 @@
     "*://*.github.careers/*",
     "*://*.indeed.com/*",
     "*://*.jobright.ai/*",
+    "*://*.glassdoor.com/*",
+    "*://*.glassdoor.co.in/*",
+    "*://*.monster.com/*",
     "https://api.notion.com/*"
   ],
   "optional_host_permissions": [
@@ -78,6 +81,16 @@
     {
       "matches": ["*://*.jobright.ai/*"],
       "js": ["content-scripts/jobright.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["*://*.glassdoor.com/*", "*://*.glassdoor.co.in/*"],
+      "js": ["content-scripts/glassdoor.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["*://*.monster.com/*"],
+      "js": ["content-scripts/monster.js"],
       "run_at": "document_idle"
     }
   ]

@@ -324,6 +324,10 @@ function detectSite(url) {
   if (/(^|\.)github\.careers$/.test(host)) return 'github';
   if (/(^|\.)indeed\.com$/.test(host)) return 'indeed';
   if (/(^|\.)jobright\.ai$/.test(host)) return 'jobright';
+  // .co.in: Glassdoor's India site, which the user's job alert emails
+  // link to even for US jobs. Drop it once the alerts point at .com.
+  if (/(^|\.)glassdoor\.(com|co\.in)$/.test(host)) return 'glassdoor';
+  if (/(^|\.)monster\.com$/.test(host)) return 'monster';
   return null;
 }
 
@@ -336,12 +340,14 @@ const CONTENT_SCRIPT_BY_SITE = {
   github: 'content-scripts/github.js',
   indeed: 'content-scripts/indeed.js',
   jobright: 'content-scripts/jobright.js',
+  glassdoor: 'content-scripts/glassdoor.js',
+  monster: 'content-scripts/monster.js',
 };
 
 // Sites whose content script answers GET_JOB_DESCRIPTION. The button
 // stays hidden on every other/no site rather than showing and then
 // failing.
-const DESCRIPTION_SITES = new Set(['linkedin', 'indeed', 'jobright']);
+const DESCRIPTION_SITES = new Set(['linkedin', 'indeed', 'jobright', 'glassdoor', 'monster']);
 
 function setDescriptionButtonVisible(visible) {
   els.copyDescriptionBtn.classList.toggle('hidden', !visible);
@@ -696,7 +702,7 @@ async function runScrape(force = false) {
     // successful scrape already applies via populateForm() below.
     populateForm({ jobUrl: tab.url });
     showScrapeNotice(
-      'No scraper for this site yet (Greenhouse, LinkedIn, Workday, Lever, Ashby, GitHub, Indeed, Jobright so far). URL filled in, enter the rest manually.',
+      'No scraper for this site yet (Greenhouse, LinkedIn, Workday, Lever, Ashby, GitHub, Indeed, Jobright, Glassdoor, Monster so far). URL filled in, enter the rest manually.',
       true
     );
     await saveDraft();
@@ -908,7 +914,7 @@ els.saveJdBtn.addEventListener('click', async () => {
   const tab = await getSourceTab();
   const board = tab && tab.url ? detectSite(tab.url) : null;
   if (!tab || !DESCRIPTION_SITES.has(board)) {
-    showSaveJdStatus('Not a LinkedIn, Indeed or Jobright job page.', false);
+    showSaveJdStatus('Not a LinkedIn, Indeed, Jobright, Glassdoor or Monster job page.', false);
     return;
   }
 

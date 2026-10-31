@@ -5,7 +5,7 @@ being worked out. Use of the Chrome Extension is not advised at this
 point.
 
 Captures job applications from Greenhouse, LinkedIn, Workday, Lever,
-Ashby, GitHub (github.careers), Indeed, and Jobright job postings and writes them into
+Ashby, GitHub (github.careers), Indeed, Jobright, Glassdoor, and Monster job postings and writes them into
 your `job-tracker` app.
 The update flow, a generic fallback scraper, and
 client-side starterPromptText regeneration aren't built yet, this
@@ -48,7 +48,7 @@ step 5 below.
    **Save** to enable the Notion backup copy described below; leave
    both blank to skip it.
 6. Open a Greenhouse, LinkedIn, Workday, Lever, Ashby, GitHub
-   (github.careers), Indeed, or Jobright job posting and click the extension icon (or
+   (github.careers), Indeed, Jobright, Glassdoor, or Monster job posting and click the extension icon (or
    switch to a tab that already has one open).
    It should auto-scrape and pre-fill the form. If it doesn't, see
    "What works right now" below for which sites are supported.
@@ -85,6 +85,15 @@ step 5 below.
     rewrite of the posting, not the employer's original text. Salary is
     sent to the JD inbox from Jobright's structured data. Only verified
     against one real posting, see `docs/notes.md`.
+  - **Glassdoor** works on `/job-listing/` pages (alert emails) and in
+    the search split view, on `glassdoor.com` and `glassdoor.co.in`.
+    The saved link is always the `glassdoor.com` listing. Copy Job
+    Description and Save JD work. Checked against saved pages only,
+    not a live session, see `docs/notes.md`.
+  - **Monster** works on `/job-openings/` pages and in the search split
+    view (`/jobs/search?...&id=`, the alert email links). The split
+    view only appears with a wide browser window. Copy Job Description
+    and Save JD work; salary is sent when the posting lists one.
   - On any unsupported site, the form is left blank for manual entry:
     nothing blocks you from typing a capture in by hand.
 - The panel automatically rescans when you switch tabs or windows. If
@@ -132,6 +141,8 @@ content-scripts/ashby.js       Ashby scraper
 content-scripts/github.js      GitHub (github.careers) scraper
 content-scripts/indeed.js      Indeed scraper
 content-scripts/jobright.js    Jobright scraper
+content-scripts/glassdoor.js   Glassdoor scraper
+content-scripts/monster.js     Monster scraper
 sidepanel/panel.html           Panel markup: settings + capture form
 sidepanel/panel.css            Styling
 sidepanel/panel.js             Permission handling, scrape request, draft autosave, duplicate/casing checks, submit logic
