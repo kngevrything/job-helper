@@ -328,6 +328,9 @@ function detectSite(url) {
   // link to even for US jobs. Drop it once the alerts point at .com.
   if (/(^|\.)glassdoor\.(com|co\.in)$/.test(host)) return 'glassdoor';
   if (/(^|\.)monster\.com$/.test(host)) return 'monster';
+  // Eightfold tenants use their own domains, so each one is listed here
+  // and in the manifest.
+  if (host === 'jobs.autodesk.com' || /(^|\.)eightfold\.ai$/.test(host)) return 'eightfold';
   return null;
 }
 
@@ -342,12 +345,13 @@ const CONTENT_SCRIPT_BY_SITE = {
   jobright: 'content-scripts/jobright.js',
   glassdoor: 'content-scripts/glassdoor.js',
   monster: 'content-scripts/monster.js',
+  eightfold: 'content-scripts/eightfold.js',
 };
 
 // Sites whose content script answers GET_JOB_DESCRIPTION. The button
 // stays hidden on every other/no site rather than showing and then
 // failing.
-const DESCRIPTION_SITES = new Set(['linkedin', 'indeed', 'jobright', 'glassdoor', 'monster']);
+const DESCRIPTION_SITES = new Set(['linkedin', 'indeed', 'jobright', 'glassdoor', 'monster', 'eightfold']);
 
 function setDescriptionButtonVisible(visible) {
   els.copyDescriptionBtn.classList.toggle('hidden', !visible);
@@ -702,7 +706,7 @@ async function runScrape(force = false) {
     // successful scrape already applies via populateForm() below.
     populateForm({ jobUrl: tab.url });
     showScrapeNotice(
-      'No scraper for this site yet (Greenhouse, LinkedIn, Workday, Lever, Ashby, GitHub, Indeed, Jobright, Glassdoor, Monster so far). URL filled in, enter the rest manually.',
+      'No scraper for this site yet (Greenhouse, LinkedIn, Workday, Lever, Ashby, GitHub, Indeed, Jobright, Glassdoor, Monster, Eightfold so far). URL filled in, enter the rest manually.',
       true
     );
     await saveDraft();
@@ -914,7 +918,7 @@ els.saveJdBtn.addEventListener('click', async () => {
   const tab = await getSourceTab();
   const board = tab && tab.url ? detectSite(tab.url) : null;
   if (!tab || !DESCRIPTION_SITES.has(board)) {
-    showSaveJdStatus('Not a LinkedIn, Indeed, Jobright, Glassdoor or Monster job page.', false);
+    showSaveJdStatus('Not a LinkedIn, Indeed, Jobright, Glassdoor, Monster or Eightfold job page.', false);
     return;
   }
 

@@ -35,6 +35,8 @@
     "*://*.glassdoor.com/*",
     "*://*.glassdoor.co.in/*",
     "*://*.monster.com/*",
+    "*://jobs.autodesk.com/*",
+    "*://*.eightfold.ai/*",
     "https://api.notion.com/*"
   ],
   "optional_host_permissions": [
@@ -91,6 +93,11 @@
     {
       "matches": ["*://*.monster.com/*"],
       "js": ["content-scripts/monster.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["*://jobs.autodesk.com/*", "*://*.eightfold.ai/*"],
+      "js": ["content-scripts/eightfold.js"],
       "run_at": "document_idle"
     }
   ]
