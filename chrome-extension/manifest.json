@@ -35,6 +35,7 @@
     "*://*.glassdoor.com/*",
     "*://*.glassdoor.co.in/*",
     "*://*.monster.com/*",
+    "*://*.dice.com/*",
     "*://jobs.autodesk.com/*",
     "*://*.eightfold.ai/*",
     "https://api.notion.com/*"
@@ -93,6 +94,11 @@
     {
       "matches": ["*://*.monster.com/*"],
       "js": ["content-scripts/monster.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["*://*.dice.com/*"],
+      "js": ["content-scripts/dice.js"],
       "run_at": "document_idle"
     },
     {

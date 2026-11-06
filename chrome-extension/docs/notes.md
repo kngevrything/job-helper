@@ -508,3 +508,35 @@ pane) and `/job-openings/<slug>--<uuid>` (standalone).
   (`$160,000–$200,000 Per Year`) when present. Not every posting has
   one, and the standalone JSON-LD had no `baseSalary`.
 - The API's `/api/jd-inbox` board allow-list needed `monster` added.
+
+### Dice
+
+Checked live (2026-11) in the built-in browser, no bot wall. Two page
+shapes, same header card (`[data-testid="job-detail-header-card"]`):
+`/jobs?...&selectedJobId=<guid>` (search, job in a right-hand pane
+`[data-testid="job-detail-pane"]`) and `/job-detail/<guid>`
+(standalone, also has JobPosting JSON-LD; the search page has none).
+
+- **Title / company:** the header's `h1`, and the company link
+  `a[data-wa-click="djv-job-company-profile-click"]`. That link's href
+  varies (`/company-profile/<guid>` or `/company/<slug>?companyname=`),
+  so it isn't matched on href first. Logo `img[alt]` is the fallback.
+- **jobId gotcha:** clicking a card does update `selectedJobId`, but if
+  that job isn't in the current results (stale link, results
+  reshuffled on reload), Dice shows the FIRST card in the pane and
+  leaves the stale id in the URL. So the id comes from the pane's
+  "Open in new tab" link (`[data-testid="job-detail-open-in-new-tab-btn"]`,
+  `/job-detail/<guid>`). Standalone: JSON-LD `identifier.value`, then
+  the guid in the path. URL param only as a last resort (`medium`).
+- **Narrow window:** at ~800px the pane is still in the DOM but zero
+  width, holding the first card's job. A zero-width pane is ignored.
+- **jobUrl:** `https://www.dice.com/job-detail/<guid>`, which is also
+  the standalone page's canonical link.
+- **Description:** `[class*="jobDescription"]` (CSS-module class with a
+  hash suffix, so substring match). Full text, no collapse; the pane's
+  "Show more" belongs to the Skills list. JSON-LD fallback, standalone
+  only.
+- **Salary:** the header's `.SeuiInfoBadge` with a digit and
+  `USD`/`$`/`per hour|year` (`USD $105,000.00 - 128,140.00 per year`;
+  cards also show `USD75 - USD85`). Not every posting has one.
+- The API's `/api/jd-inbox` board allow-list needed `dice` added.
