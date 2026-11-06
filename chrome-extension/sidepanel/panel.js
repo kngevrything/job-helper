@@ -249,6 +249,21 @@ async function pushToNotion({ company, jobId, jobTitle, jobUrl }) {
     return { skipped: true };
   }
 
+  // The Mongo API enforces all four of these server-side and rejects an
+  // incomplete submission outright -- Notion had no equivalent check, so
+  // an accidental submit past the (missing) Job ID "required" attribute
+  // still wrote a half-filled page here even while the DB correctly
+  // flagged it. Same four fields, same all-required rule, checked before
+  // anything is sent.
+  const missing = [];
+  if (!company) missing.push('Company');
+  if (!jobId) missing.push('Job ID');
+  if (!jobTitle) missing.push('Job Title');
+  if (!jobUrl) missing.push('Job URL');
+  if (missing.length) {
+    throw new Error(`Missing ${missing.join(', ')} -- not pushed to Notion.`);
+  }
+
   const today = new Date().toISOString().split('T')[0];
 
   const res = await fetch('https://api.notion.com/v1/pages', {
