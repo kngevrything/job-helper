@@ -138,6 +138,7 @@ const els = {
   saveSelectionBtn: document.getElementById('saveSelectionBtn'),
   saveJdStatus: document.getElementById('saveJdStatus'),
   jdInboxCount: document.getElementById('jdInboxCount'),
+  jdInboxList: document.getElementById('jdInboxList'),
   clearDraftBtn: document.getElementById('clearDraftBtn'),
   submitBtn: document.getElementById('submitBtn'),
   resultMessage: document.getElementById('resultMessage'),
@@ -1091,16 +1092,20 @@ async function refreshJdInboxCount() {
   const apiBaseUrl = await getApiBaseUrl();
   if (!apiBaseUrl || !(await hasApiPermission(apiBaseUrl))) {
     els.jdInboxCount.classList.add('hidden');
+    els.jdInboxList.classList.add('hidden');
     return;
   }
 
   let text;
+  let files = [];
   try {
     const res = await fetch(`${apiBaseUrl}/api/jd-inbox`);
     const payload = await res.json().catch(() => null);
     if (res.ok && payload && typeof payload.count === 'number') {
       const n = payload.count;
       text = n === 0 ? 'No JDs awaiting triage' : `${n} JD${n === 1 ? '' : 's'} awaiting triage`;
+      // Older servers only send count; the list just stays hidden then.
+      if (Array.isArray(payload.files)) files = payload.files;
     } else {
       text = `JD inbox: ${(payload && payload.error) || `HTTP ${res.status}`}`;
     }
@@ -1109,6 +1114,16 @@ async function refreshJdInboxCount() {
   }
   els.jdInboxCount.textContent = text;
   els.jdInboxCount.classList.remove('hidden');
+
+  els.jdInboxList.replaceChildren(
+    ...files.map((name) => {
+      const li = document.createElement('li');
+      li.textContent = name;
+      li.title = name;
+      return li;
+    })
+  );
+  els.jdInboxList.classList.toggle('hidden', files.length === 0);
 }
 
 // ---- Fetching generated outputs after create -----------------------------

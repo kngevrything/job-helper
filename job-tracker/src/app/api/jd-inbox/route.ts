@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { countJdInboxFiles, writeJdInboxFile } from "@/lib/jdInbox/jdInbox";
+import { listJdInboxFiles, writeJdInboxFile } from "@/lib/jdInbox/jdInbox";
 
 // POST /api/jd-inbox -- the Chrome extension's "Save JD for triage"
 // button. Writes one markdown file into JD_INBOX_DIR for Claude to triage
 // later. Deliberately no database or Notion writes.
-// GET /api/jd-inbox -- how many files are awaiting triage, for the
+// GET /api/jd-inbox -- the files awaiting triage (count + names), for the
 // extension's read-out.
 
 // "other" = text the user highlighted on a site with no scraper.
@@ -76,7 +76,8 @@ export async function GET() {
   }
 
   try {
-    return NextResponse.json({ ok: true, count: await countJdInboxFiles(dir) });
+    const files = await listJdInboxFiles(dir);
+    return NextResponse.json({ ok: true, count: files.length, files });
   } catch (error) {
     console.error("GET /api/jd-inbox failed:", error);
     return NextResponse.json(

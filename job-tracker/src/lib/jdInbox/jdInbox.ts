@@ -115,14 +115,20 @@ export async function writeJdInboxFile(dir: string, input: JdInboxInput, now = n
 
 // Files awaiting triage: every .md in the inbox except "_"-prefixed ones
 // (Claude skips those). A missing folder just means nothing saved yet.
-export async function countJdInboxFiles(dir: string) {
+// Sorted by name for a stable list in the extension.
+export async function listJdInboxFiles(dir: string) {
   try {
     const entries = await fs.readdir(dir, { withFileTypes: true });
-    return entries.filter(
-      (e) => e.isFile() && e.name.toLowerCase().endsWith(".md") && !e.name.startsWith("_")
-    ).length;
+    return entries
+      .filter((e) => e.isFile() && e.name.toLowerCase().endsWith(".md") && !e.name.startsWith("_"))
+      .map((e) => e.name)
+      .sort((a, b) => a.localeCompare(b));
   } catch (err) {
-    if ((err as NodeJS.ErrnoException).code === "ENOENT") return 0;
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") return [];
     throw err;
   }
+}
+
+export async function countJdInboxFiles(dir: string) {
+  return (await listJdInboxFiles(dir)).length;
 }
