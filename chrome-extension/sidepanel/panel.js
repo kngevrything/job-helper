@@ -957,7 +957,11 @@ els.saveJdBtn.addEventListener('click', async () => {
   try {
     const response = await sendToTabWithInject(tab, { type: 'GET_JOB_DESCRIPTION' });
     if (!response || !response.ok || !response.description) {
-      showSaveJdStatus('No job description found on this page.', false);
+      // Scraper missed (layout change, odd page variant): reveal the
+      // selection fallback that setDescriptionButtonVisible normally hides
+      // on scraper sites. The next rescan / tab switch hides it again.
+      els.saveSelectionBtn.classList.remove('hidden');
+      showSaveJdStatus('No job description found. Highlight it on the page and use "Save selected text for triage".', false);
       return;
     }
 
